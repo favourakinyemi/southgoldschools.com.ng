@@ -1,0 +1,81 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,300;1,400;1,500;1,600;1,700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Poppins", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-display: "Poppins", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+}
+
+body {
+  font-family: var(--font-sans);
+}
+
+@variant dark (&:where(.dark, .dark *));
+
+/* Professional print configuration */
+@media print {
+  /* Hide standard web layouts, portals, sidebars, headers, and tabs */
+  body {
+    background: white !important;
+    color: black !important;
+  }
+  
+  body * {
+    visibility: hidden;
+  }
+  
+  /* Reveal only the high-fidelity printable report card container */
+  #printable-report-card,
+  #printable-report-card * {
+    visibility: visible;
+  }
+  
+  /* Ensure the printable container fits the page boundaries accurately */
+  #printable-report-card {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 100% !important;
+    padding: 0px !important;
+    margin: 0px !important;
+    border: none !important;
+    box-shadow: none !important;
+    background: white !important;
+  }
+
+  /* Force optimal text contrast and standard borders on printed media */
+  #printable-report-card,
+  #printable-report-card * {
+    color: #0f172a !important; /* slate-900 text */
+    border-color: #94a3b8 !important; /* slate-400 crisp print borders */
+    text-shadow: none !important;
+    box-shadow: none !important;
+  }
+
+  /* Force browsers to print all backgrounds and colors faithfully */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Exclude digital action buttons, status pill, and online review widgets */
+  .no-print,
+  .no-print * {
+    display: none !important;
+    visibility: hidden !important;
+  }
+
+  /* Page break rules for structured report flows */
+  .print-page-break {
+    page-break-after: always !important;
+    break-after: page !important;
+  }
+  
+  @page {
+    size: letter;
+    margin: 12mm;
+  }
+}

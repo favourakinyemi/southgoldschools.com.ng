@@ -1,0 +1,17 @@
+node_modules/
+dist/
+build/
+coverage/
+
+.local/
+.npm-global/
+.npm/
+.kilo/
+.playwright/
+playwright-report/
+
+*.log
+*.env
+!.env.example
+
+db.json

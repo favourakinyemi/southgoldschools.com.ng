@@ -1,0 +1,6 @@
+{
+  "name": "SouthGold Montessori School",
+  "description": "A comprehensive, multi-role school management platform with dedicated portals for admins, teachers, parents, and students.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
