@@ -150,9 +150,19 @@ export default function App() {
       '/login/parent': 'PARENT',
       '/login/student': 'STUDENT'
     };
+    const getRoutePath = () => {
+      const redirectPath = new URLSearchParams(window.location.search).get('redirect');
+      if (redirectPath) {
+        const safePath = redirectPath.split('?')[0];
+        if (PATH_TO_ROLE[safePath]) {
+          return safePath;
+        }
+      }
+      return window.location.pathname;
+    };
     const validateRoute = async () => {
       if (isLoggedIn) {
-        const expectedRole = PATH_TO_ROLE[window.location.pathname];
+        const expectedRole = PATH_TO_ROLE[getRoutePath()];
         if (expectedRole && currentRole !== expectedRole) {
           await supabase.auth.signOut();
           await fetch('/api/auth/logout', { method: 'POST' });

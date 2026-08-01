@@ -106,10 +106,20 @@ export default function LandingPage({
     '/login/student',
   ]), []);
 
-  const [currentPath, setCurrentPath] = useState(() => {
-    const initialPath = window.location.pathname;
-    return validPaths.has(initialPath) ? initialPath : '/';
-  });
+  const resolvePathFromLocation = React.useCallback((location: Location) => {
+    const redirectPath = new URLSearchParams(location.search).get('redirect');
+    if (redirectPath) {
+      const safePath = redirectPath.split('?')[0];
+      if (validPaths.has(safePath)) {
+        return safePath;
+      }
+    }
+
+    const pathname = location.pathname;
+    return validPaths.has(pathname) ? pathname : '/';
+  }, [validPaths]);
+
+  const [currentPath, setCurrentPath] = useState(() => resolvePathFromLocation(window.location));
 
   const handleNavigate = (path: string) => {
     const nextPath = validPaths.has(path) ? path : '/';
@@ -120,12 +130,12 @@ export default function LandingPage({
 
   useEffect(() => {
     const handlePopState = () => {
-      const nextPath = validPaths.has(window.location.pathname) ? window.location.pathname : '/';
+      const nextPath = resolvePathFromLocation(window.location);
       setCurrentPath(nextPath);
     };
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
-  }, [validPaths]);
+  }, [resolvePathFromLocation]);
 
   const [loginError, setLoginError] = useState<string | null>(null);
 
