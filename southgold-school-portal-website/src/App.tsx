@@ -58,6 +58,7 @@ export default function App() {
   // 2. Auth state from Supabase
   const [authUser, setAuthUser] = useState<{ accessToken: string; user: AuthUser } | null>(null);
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [appReady, setAppReady] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [globalLoginError, setGlobalLoginError] = useState<string | null>(null);
   const [darkTheme, setDarkTheme] = useState(() => {
@@ -170,6 +171,10 @@ export default function App() {
   }, [isLoggedIn, currentRole]);
 
   // 4. Load/Sync data snapshot when authentication status changes
+  useEffect(() => {
+    setAppReady(true);
+  }, []);
+
   useEffect(() => {
     async function fetchSnapshot() {
       try {
@@ -872,6 +877,10 @@ export default function App() {
         );
     }
   };
+
+  if (!appReady) {
+    return null;
+  }
 
   if (!isLoggedIn) {
     return (
