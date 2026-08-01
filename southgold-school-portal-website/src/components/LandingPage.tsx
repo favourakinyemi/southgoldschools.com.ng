@@ -96,23 +96,36 @@ export default function LandingPage({
       .catch(err => console.error('Error fetching CMS:', err));
   }, []);
 
+  const validPaths = React.useMemo(() => new Set([
+    '/',
+    '/login',
+    '/login/super-admin',
+    '/login/staff-admin',
+    '/login/teacher',
+    '/login/parent',
+    '/login/student',
+  ]), []);
+
   const [currentPath, setCurrentPath] = useState(() => {
-    return window.location.pathname;
+    const initialPath = window.location.pathname;
+    return validPaths.has(initialPath) ? initialPath : '/';
   });
 
   const handleNavigate = (path: string) => {
-    setCurrentPath(path);
-    window.history.pushState(null, '', path);
+    const nextPath = validPaths.has(path) ? path : '/';
+    setCurrentPath(nextPath);
+    window.history.pushState(null, '', nextPath);
     window.scrollTo({ top: 0 });
   };
 
   useEffect(() => {
     const handlePopState = () => {
-      setCurrentPath(window.location.pathname);
+      const nextPath = validPaths.has(window.location.pathname) ? window.location.pathname : '/';
+      setCurrentPath(nextPath);
     };
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
-  }, []);
+  }, [validPaths]);
 
   const [loginError, setLoginError] = useState<string | null>(null);
 
