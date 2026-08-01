@@ -2,6 +2,8 @@ node_modules/
 dist/
 build/
 coverage/
+.netlify/
+.vite/
 
 .local/
 .npm-global/
@@ -12,6 +14,9 @@ playwright-report/
 
 *.log
 *.env
+*.local
 !.env.example
 
 db.json
+*.tsbuildinfo
+.DS_Store
