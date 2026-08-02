@@ -3,5 +3,7 @@ import { NextResponse } from 'next/server';
 export const dynamic = 'force-dynamic';
 
 export async function POST() {
-  return NextResponse.json({ success: true });
+  const res = NextResponse.json({ success: true });
+  res.cookies.set('sb-access-token', '', { path: '/', httpOnly: true, sameSite: 'lax', maxAge: 0 });
+  return res;
 }

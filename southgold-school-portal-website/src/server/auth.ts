@@ -42,6 +42,23 @@ export async function authenticate(token?: string): Promise<AuthUser | null> {
   return profile;
 }
 
+// Authenticate a Route Handler request: prefer an Authorization header, fall
+// back to the httpOnly sb-access-token cookie set by /api/auth/session.
+export async function authenticateRequest(request: Request): Promise<AuthUser | null> {
+  const authHeader = request.headers.get('authorization');
+  if (authHeader) {
+    const user = await authenticate(authHeader);
+    if (user) return user;
+  }
+  const cookieHeader = request.headers.get('cookie');
+  const token = cookieHeader
+    ?.split(';')
+    .map(c => c.trim())
+    .find(c => c.startsWith('sb-access-token='))
+    ?.slice('sb-access-token='.length);
+  return token ? authenticate(token) : null;
+}
+
 export async function login(email: string, password: string) {
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
   if (error || !data.session) {
