@@ -982,7 +982,8 @@ export default function ResultProcessor({
                       </td>
                     </tr>
                   ) : (
-                    filteredClasses.map(classId => {
+                    filteredClasses.map(classItem => {
+                      const classId = classItem.classId;
                       const status = getWorkflowStatusForClass(classId);
                       const classKids = students.filter(s => s.classId === classId);
                       const classTeacher = teachers?.find(t => 

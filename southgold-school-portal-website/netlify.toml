@@ -1,13 +1,10 @@
 [build]
   command = "npm run build"
-  publish = "dist"
+  publish = ".next"
 
-[[redirects]]
-  from = "/login/*"
-  to = "/index.html"
-  status = 200
-
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
+# Next.js on Netlify is served by the runtime plugin, which handles routing for
+# the app router (including the [[...slug]] catch-all) and the /api/* routes.
+# Do NOT add SPA-style "/* -> /index.html" redirects here: this is no longer a
+# Vite single-page app and there is no /index.html to fall back to.
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
