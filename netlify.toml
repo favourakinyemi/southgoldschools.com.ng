@@ -1,0 +1,12 @@
+[build]
+  base = "southgold-school-portal-website"
+  command = "npm run build"
+  publish = ".next"
+
+# Next.js on Netlify is served by the runtime plugin, which handles routing
+# for the app router (including the [[...slug]] catch-all) and the /api/*
+# routes. Paths above are relative to `base`, per Netlify's monorepo config
+# rules, since the actual project (package.json, next.config.js, etc.) lives
+# in the southgold-school-portal-website/ subfolder, not the repo root.
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
