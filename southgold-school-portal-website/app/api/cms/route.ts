@@ -17,7 +17,8 @@ export async function PUT(request: Request) {
   if (auth instanceof NextResponse) return auth;
   try {
     const body = await request.json();
-    return NextResponse.json(await repo.CMS.update(body));
+    await repo.CMS.update(body);
+    return NextResponse.json({ success: true });
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 });
   }
