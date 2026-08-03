@@ -161,7 +161,14 @@ export default function LandingPage({
     'STUDENT': '/login/student'
   };
 
-  const [emailInput, setEmailInput] = useState('');
+  const REMEMBERED_EMAIL_KEY = 'sg_remembered_email';
+  const [emailInput, setEmailInput] = useState(() => {
+    try {
+      return window.localStorage.getItem(REMEMBERED_EMAIL_KEY) || '';
+    } catch {
+      return '';
+    }
+  });
   const [passwordInput, setPasswordInput] = useState('');
   const [rememberMe, setRememberMe] = useState(true);
   const [loginLoading, setLoginLoading] = useState(false);
@@ -431,6 +438,13 @@ export default function LandingPage({
               setLoginLoading(true);
               try {
                 await onLogin(emailInput, passwordInput, activeRole, rememberMe);
+                try {
+                  if (rememberMe) {
+                    window.localStorage.setItem(REMEMBERED_EMAIL_KEY, emailInput);
+                  } else {
+                    window.localStorage.removeItem(REMEMBERED_EMAIL_KEY);
+                  }
+                } catch {}
               } catch (err: any) {
                 setLoginError(err.message || 'Login failed. Please check your credentials.');
               } finally {
@@ -447,9 +461,10 @@ export default function LandingPage({
                 <div>
                   <label className="text-[9px] uppercase font-bold tracking-wider text-slate-500 block mb-1">User Email Address</label>
                   <div className="relative">
-                    <input 
-                      type="email" 
+                    <input
+                      type="email"
                       required
+                      autoComplete="username"
                       value={emailInput}
                       onChange={(e) => setEmailInput(e.target.value)}
                       placeholder={`e.g. ${activeRole.toLowerCase()}@southgold.com`}
@@ -464,9 +479,10 @@ export default function LandingPage({
                     <label className="text-[9px] uppercase font-bold tracking-wider text-slate-500">Security Password</label>
                   </div>
                   <div className="relative">
-                    <input 
-                      type="password" 
+                    <input
+                      type="password"
                       required
+                      autoComplete="current-password"
                       value={passwordInput}
                       onChange={(e) => setPasswordInput(e.target.value)}
                       placeholder="••••••••"
