@@ -37,6 +37,7 @@ export default function ActivityManager({
   const [desc, setDesc] = useState('');
   const [imgUrl, setImgUrl] = useState('');
   const [footer, setFooter] = useState('');
+  const [content, setContent] = useState('');
 
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
@@ -46,6 +47,7 @@ export default function ActivityManager({
     setDesc('');
     setImgUrl('');
     setFooter('');
+    setContent('');
   };
 
   const showSuccess = (msg: string) => {
@@ -76,7 +78,8 @@ export default function ActivityManager({
       badge: badge || 'General Update',
       desc,
       imgUrl: imgUrl.trim() || randomDefaultImg,
-      footer: footer || 'School Activity'
+      footer: footer || 'School Activity',
+      content: content.trim() || undefined
     };
 
     onSetActivities([...activities, newActivity]);
@@ -92,6 +95,7 @@ export default function ActivityManager({
     setDesc(act.desc);
     setImgUrl(act.imgUrl);
     setFooter(act.footer);
+    setContent(act.content || '');
     setIsAdding(false);
   };
 
@@ -107,7 +111,8 @@ export default function ActivityManager({
           badge: badge || 'Update',
           desc,
           imgUrl: imgUrl || 'https://images.unsplash.com/photo-1544717305-2782549b5136?w=600&auto=format&fit=crop&q=80',
-          footer: footer || 'School Activity'
+          footer: footer || 'School Activity',
+          content: content.trim() || undefined
         };
       }
       return act;
@@ -225,16 +230,32 @@ export default function ActivityManager({
             <div className="space-y-1.5">
               <label className="text-[10px] uppercase font-bold text-slate-550 dark:text-slate-350 flex items-center gap-1">
                 <FileText size={11} className="text-slate-400" />
-                Highlight Details Description <span className="text-red-500">*</span>
+                Card Summary (short teaser shown on the activity card) <span className="text-red-500">*</span>
               </label>
               <textarea
                 required
-                rows={3}
-                placeholder="Write an outstanding, brief description outlining standard details, hours, schedule, or qualifications."
+                rows={2}
+                placeholder="A brief one or two line summary shown on the activity card itself."
                 value={desc}
                 onChange={e => setDesc(e.target.value)}
                 className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg focus:outline-hidden focus:ring-1 focus:ring-amber-500 leading-relaxed font-normal"
                 id="activity-desc-input"
+              />
+            </div>
+
+            {/* Full Details for the read-more popup */}
+            <div className="space-y-1.5">
+              <label className="text-[10px] uppercase font-bold text-slate-550 dark:text-slate-350 flex items-center gap-1">
+                <FileText size={11} className="text-slate-400" />
+                Full Details (optional -- shown when a visitor clicks the card to read more)
+              </label>
+              <textarea
+                rows={5}
+                placeholder="Write the full story here: schedule, requirements, background, anything worth reading beyond the short summary. Leave empty to just show the card summary above."
+                value={content}
+                onChange={e => setContent(e.target.value)}
+                className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg focus:outline-hidden focus:ring-1 focus:ring-amber-500 leading-relaxed font-normal"
+                id="activity-content-input"
               />
             </div>
 

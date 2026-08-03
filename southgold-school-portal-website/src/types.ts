@@ -214,5 +214,6 @@ export interface SchoolActivity {
   desc: string;
   imgUrl: string;
   footer: string;
+  content?: string;
 }
 

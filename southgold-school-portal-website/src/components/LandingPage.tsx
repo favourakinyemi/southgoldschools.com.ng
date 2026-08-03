@@ -54,8 +54,9 @@ export default function LandingPage({
   schoolEmail,
   schoolPhone,
   schoolAddress,
-  globalLoginError 
+  globalLoginError
 }: LandingPageProps) {
+  const [selectedActivity, setSelectedActivity] = useState<SchoolActivity | null>(null);
   const [cms, setCms] = useState<any>({
     motto: 'Learn and Grow Together.',
     whatsapp: '+234 803 123 4567',
@@ -84,6 +85,15 @@ export default function LandingPage({
       { id: '1', title: 'Resumption for Third Term', content: 'Third term begins on Monday, May 11th, 2026. All pupils are expected to be in full uniform.', date: '2026-05-08' }
     ]
   });
+
+  useEffect(() => {
+    if (!selectedActivity) return;
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setSelectedActivity(null);
+    };
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [selectedActivity]);
 
   useEffect(() => {
     fetch('/api/cms')
@@ -839,11 +849,17 @@ export default function LandingPage({
                 footer: 'Creative Event'
               }
             ]).map((act) => (
-              <div key={act.id} className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden hover:border-amber-500/20 transition-all flex flex-col justify-between" id={`activity-${act.id}`}>
+              <button
+                type="button"
+                key={act.id}
+                onClick={() => setSelectedActivity(act)}
+                className="text-left bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden hover:border-amber-500/40 hover:shadow-md transition-all flex flex-col justify-between cursor-pointer"
+                id={`activity-${act.id}`}
+              >
                 <div>
-                  <img 
-                    src={act.imgUrl || "https://images.unsplash.com/photo-1544717305-2782549b5136?w=400&auto=format&fit=crop&q=80"} 
-                    alt={act.title} 
+                  <img
+                    src={act.imgUrl || "https://images.unsplash.com/photo-1544717305-2782549b5136?w=400&auto=format&fit=crop&q=80"}
+                    alt={act.title}
                     className="w-full h-40 object-cover"
                     referrerPolicy="no-referrer"
                   />
@@ -854,9 +870,12 @@ export default function LandingPage({
                     <h4 className="font-extrabold text-xs sm:text-sm uppercase tracking-wide text-slate-900 dark:text-slate-100">
                       {act.title}
                     </h4>
-                    <p className="text-[11px] text-slate-500 leading-relaxed font-semibold">
+                    <p className="text-[11px] text-slate-500 leading-relaxed font-semibold line-clamp-2">
                       {act.desc}
                     </p>
+                    <span className="inline-block text-[10px] font-bold text-[#2563eb] uppercase tracking-wide">
+                      Read more &rarr;
+                    </span>
                   </div>
                 </div>
                 {act.footer && (
@@ -864,12 +883,57 @@ export default function LandingPage({
                     {act.footer}
                   </div>
                 )}
-              </div>
+              </button>
             ))}
           </div>
 
         </div>
       </section>
+
+      {/* ACTIVITY DETAIL MODAL */}
+      {selectedActivity && (
+        <div
+          className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4 z-50"
+          onClick={() => setSelectedActivity(null)}
+        >
+          <div
+            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 w-full max-w-lg rounded-2xl shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="relative">
+              <img
+                src={selectedActivity.imgUrl || "https://images.unsplash.com/photo-1544717305-2782549b5136?w=800&auto=format&fit=crop&q=80"}
+                alt={selectedActivity.title}
+                className="w-full h-56 object-cover"
+                referrerPolicy="no-referrer"
+              />
+              <button
+                type="button"
+                onClick={() => setSelectedActivity(null)}
+                className="absolute top-3 right-3 bg-slate-950/60 hover:bg-slate-950/80 text-white rounded-full p-1.5 cursor-pointer"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <div className="p-6 space-y-3">
+              <span className="text-[9px] font-black uppercase text-amber-600 tracking-wider">
+                {selectedActivity.badge}
+              </span>
+              <h3 className="font-display font-extrabold text-lg text-slate-900 dark:text-slate-50 uppercase tracking-tight">
+                {selectedActivity.title}
+              </h3>
+              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed whitespace-pre-line">
+                {selectedActivity.content || selectedActivity.desc}
+              </p>
+              {selectedActivity.footer && (
+                <div className="pt-3 border-t border-slate-150 dark:border-slate-800 text-[10px] text-slate-430 font-bold">
+                  {selectedActivity.footer}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* NEWS & ANNOUNCEMENTS BOARD */}
       <section className="py-12 bg-slate-50 dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800">
