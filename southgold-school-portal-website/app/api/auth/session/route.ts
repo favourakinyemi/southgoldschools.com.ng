@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(request: Request) {
   try {
-    const { accessToken } = await request.json();
+    const { accessToken, remember = true } = await request.json();
     if (!accessToken) {
       const res = NextResponse.json({ success: true });
       res.cookies.set('sb-access-token', '', { path: '/', httpOnly: true, sameSite: 'lax', maxAge: 0 });
@@ -14,11 +14,13 @@ export async function POST(request: Request) {
 
     const user = await authenticate(accessToken);
     const res = NextResponse.json({ user, ok: !!user });
+    // Omitting maxAge makes this a session cookie (cleared when the browser
+    // closes) for "remember me" off; otherwise it survives 7 days.
     res.cookies.set('sb-access-token', accessToken, {
       path: '/',
       httpOnly: true,
       sameSite: 'lax',
-      maxAge: 7 * 24 * 60 * 60,
+      ...(remember ? { maxAge: 7 * 24 * 60 * 60 } : {}),
     });
     return res;
   } catch (e: any) {

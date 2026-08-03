@@ -32,7 +32,7 @@ import {
 import { UserRole, SchoolActivity } from '../types';
 
 interface LandingPageProps {
-  onLogin: (email: string, password: string, expectedRole?: UserRole) => Promise<void>;
+  onLogin: (email: string, password: string, expectedRole?: UserRole, rememberMe?: boolean) => Promise<void>;
   darkTheme: boolean;
   onToggleTheme: () => void;
   activities?: SchoolActivity[];
@@ -163,6 +163,7 @@ export default function LandingPage({
 
   const [emailInput, setEmailInput] = useState('');
   const [passwordInput, setPasswordInput] = useState('');
+  const [rememberMe, setRememberMe] = useState(true);
   const [loginLoading, setLoginLoading] = useState(false);
   
 
@@ -429,7 +430,7 @@ export default function LandingPage({
               setLoginError(null);
               setLoginLoading(true);
               try {
-                await onLogin(emailInput, passwordInput, activeRole);
+                await onLogin(emailInput, passwordInput, activeRole, rememberMe);
               } catch (err: any) {
                 setLoginError(err.message || 'Login failed. Please check your credentials.');
               } finally {
@@ -473,7 +474,16 @@ export default function LandingPage({
                     />
                     <Lock className="absolute left-3 top-3.5 text-slate-400" size={13} />
                   </div>
-                  <div className="flex justify-end mt-2">
+                  <div className="flex justify-between items-center mt-2">
+                    <label className="flex items-center gap-1.5 text-[10px] text-slate-500 dark:text-slate-400 font-semibold cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={rememberMe}
+                        onChange={(e) => setRememberMe(e.target.checked)}
+                        className="h-3 w-3 rounded border-slate-300 dark:border-slate-700 text-amber-500 focus:ring-amber-500 cursor-pointer"
+                      />
+                      Remember me
+                    </label>
                     <button
                       type="button"
                       onClick={() => setLoginError("To reset your password, please contact the SouthGold Admin Desk or School Registrar directly.")}

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { supabase } from './lib/supabase';
+import { supabase, setRememberMe, isRememberMeEnabled } from './lib/supabase';
 import { 
   Student, 
   Teacher, 
@@ -89,7 +89,7 @@ export default function App() {
           const syncRes = await fetch('/api/auth/session', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ accessToken: session.access_token }),
+            body: JSON.stringify({ accessToken: session.access_token, remember: isRememberMeEnabled() }),
           });
           if (syncRes.ok) {
             const meResponse = await fetch('/api/auth/me');
@@ -550,7 +550,8 @@ export default function App() {
     setActiveTab('dashboard');
   };
 
-  const handleLogin = async (email: string, password: string, expectedRole?: UserRole) => {
+  const handleLogin = async (email: string, password: string, expectedRole?: UserRole, rememberMe: boolean = true) => {
+    setRememberMe(rememberMe);
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
       throw new Error(error.message || 'Login failed');
@@ -558,11 +559,11 @@ export default function App() {
     if (!data.session) {
       throw new Error('Login failed: no active session found');
     }
-    
+
     const syncRes = await fetch('/api/auth/session', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ accessToken: data.session.access_token }),
+      body: JSON.stringify({ accessToken: data.session.access_token, remember: rememberMe }),
     });
     if (!syncRes.ok) {
       const errJson = await syncRes.json();
