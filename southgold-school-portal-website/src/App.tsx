@@ -530,22 +530,6 @@ export default function App() {
     }
   };
 
-  // Keep configuration in sync with backend API
-  useEffect(() => {
-    async function syncConfig() {
-      try {
-        await fetch('/api/config', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(config)
-        });
-      } catch (err) {
-        console.error('Error synchronizing school configuration:', err);
-      }
-    }
-    if (config) syncConfig();
-  }, [config]);
-
   const handleRoleChange = (role: UserRole) => {
     setActiveTab('dashboard');
   };
