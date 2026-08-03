@@ -58,6 +58,7 @@ export default function LandingPage({
 }: LandingPageProps) {
   const [selectedActivity, setSelectedActivity] = useState<SchoolActivity | null>(null);
   const [selectedBulletin, setSelectedBulletin] = useState<{ kind: 'news' | 'announcement'; date: string; title: string; content: string; image?: string } | null>(null);
+  const [selectedGalleryIndex, setSelectedGalleryIndex] = useState<number | null>(null);
   const [cms, setCms] = useState<any>({
     motto: 'Learn and Grow Together.',
     whatsapp: '+234 803 123 4567',
@@ -98,6 +99,18 @@ export default function LandingPage({
     window.addEventListener('keydown', handleEscape);
     return () => window.removeEventListener('keydown', handleEscape);
   }, [selectedActivity, selectedBulletin]);
+
+  useEffect(() => {
+    if (selectedGalleryIndex === null) return;
+    const galleryLength = cms.gallery?.length || 0;
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setSelectedGalleryIndex(null);
+      else if (e.key === 'ArrowRight') setSelectedGalleryIndex((i) => (i === null ? i : (i + 1) % galleryLength));
+      else if (e.key === 'ArrowLeft') setSelectedGalleryIndex((i) => (i === null ? i : (i - 1 + galleryLength) % galleryLength));
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [selectedGalleryIndex, cms.gallery]);
 
   useEffect(() => {
     fetch('/api/cms')
@@ -286,13 +299,17 @@ export default function LandingPage({
       replies: []
     };
 
-    const notificationPayload = {
+    // One notification per admin role -- both Super Admin and School Admin
+    // need their own row since a notification's recipientRole is a single
+    // value and the bell/list only shows a notification whose recipientRole
+    // matches the viewer's own role (or 'ALL').
+    const notificationPayloads = (['SUPER_ADMIN', 'SCHOOL_ADMIN'] as const).map((recipientRole) => ({
       title: `New Admission/Fees Inquiry Logged`,
       content: `Inquiry from ${contactName} (${contactEmail}) has been logged. Subject: ${contactSubject}. Message: "${contactMessage}"`,
       category: 'System' as const,
       date: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }),
-      recipientRole: 'SCHOOL_ADMIN' as const
-    };
+      recipientRole
+    }));
 
     try {
       // 1. Post to tickets DB so Staff Admin and Support Desk processes it
@@ -304,17 +321,14 @@ export default function LandingPage({
         body: JSON.stringify(ticketPayload),
       });
 
-      // 2. Post notification alert directly to school admins workspace dashboard
+      // 2. Post notification alerts to both the Super Admin and School Admin dashboards
       await fetch('/api/notifications', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(notificationPayload),
+        body: JSON.stringify(notificationPayloads),
       });
-
-      // 3. For email dispatch simulation, log to server or console to mock sending email
-      console.log(`Dispatched simulated email notification to southgoldmontessorischools@gmail.com with subject: Admission Inquiry from ${contactName}`);
     } catch (err) {
       console.error("Failed to forward inquiry alerts directly to admin portal:", err);
     } finally {
@@ -1129,13 +1143,67 @@ export default function LandingPage({
             </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {cms.gallery.map((imgUrl: string, idx: number) => (
-                <div key={idx} className="aspect-video rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm hover:scale-[1.02] transition-transform">
+                <button
+                  type="button"
+                  key={idx}
+                  onClick={() => setSelectedGalleryIndex(idx)}
+                  className="aspect-video rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm hover:scale-[1.02] transition-transform cursor-pointer"
+                >
                   <img src={imgUrl} alt={`Gallery ${idx + 1}`} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                </div>
+                </button>
               ))}
             </div>
           </div>
         </section>
+      )}
+
+      {/* GALLERY LIGHTBOX */}
+      {selectedGalleryIndex !== null && cms.gallery && cms.gallery[selectedGalleryIndex] && (
+        <div
+          className="fixed inset-0 bg-slate-950/80 backdrop-blur-xs flex items-center justify-center p-4 z-50"
+          onClick={() => setSelectedGalleryIndex(null)}
+        >
+          <button
+            type="button"
+            onClick={() => setSelectedGalleryIndex(null)}
+            className="absolute top-4 right-4 bg-white/10 hover:bg-white/20 text-white rounded-full p-2 cursor-pointer"
+          >
+            <X size={18} />
+          </button>
+
+          {cms.gallery.length > 1 && (
+            <>
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); setSelectedGalleryIndex((i) => (i === null ? i : (i - 1 + cms.gallery.length) % cms.gallery.length)); }}
+                className="absolute left-2 sm:left-6 top-1/2 -translate-y-1/2 bg-white/10 hover:bg-white/20 text-white rounded-full p-2 cursor-pointer"
+              >
+                <ArrowLeft size={18} />
+              </button>
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); setSelectedGalleryIndex((i) => (i === null ? i : (i + 1) % cms.gallery.length)); }}
+                className="absolute right-2 sm:right-6 top-1/2 -translate-y-1/2 bg-white/10 hover:bg-white/20 text-white rounded-full p-2 cursor-pointer"
+              >
+                <ArrowRight size={18} />
+              </button>
+            </>
+          )}
+
+          <img
+            src={cms.gallery[selectedGalleryIndex]}
+            alt={`Gallery ${selectedGalleryIndex + 1}`}
+            className="max-w-full max-h-[85vh] object-contain rounded-lg"
+            referrerPolicy="no-referrer"
+            onClick={(e) => e.stopPropagation()}
+          />
+
+          {cms.gallery.length > 1 && (
+            <span className="absolute bottom-4 left-1/2 -translate-x-1/2 text-white/80 text-[11px] font-bold">
+              {selectedGalleryIndex + 1} / {cms.gallery.length}
+            </span>
+          )}
+        </div>
       )}
 
       {/* INQUIRIES & CAMPUS CONTACT INFORMATION - Fully compliant simulated contact form */}
@@ -1236,15 +1304,15 @@ export default function LandingPage({
                     <span className="text-[10px] uppercase font-black text-slate-455 dark:text-slate-400 tracking-wider block border-b border-slate-200 dark:border-slate-800/80 pb-1.5 mb-2">📋 Notification Dispatch Logs:</span>
                     <div className="flex items-center gap-2 text-[10.5px] font-semibold text-emerald-600 dark:text-emerald-400">
                       <span className="flex-shrink-0 w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                      <span>Support Ticket sent to Staff Portal</span>
+                      <span>Support Ticket logged in the admin portal</span>
                     </div>
                     <div className="flex items-center gap-2 text-[10.5px] font-semibold text-emerald-600 dark:text-emerald-400">
                       <span className="flex-shrink-0 w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                      <span>Admissions Alert posted to Admin Desk</span>
+                      <span>Alert sent to Super Admin dashboard</span>
                     </div>
-                    <div className="flex items-center gap-2 text-[10.5px] font-semibold text-blue-600 dark:text-blue-400">
-                      <span className="flex-shrink-0 w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
-                      <span>Dispatched to school: southgoldmontessorischools@gmail.com</span>
+                    <div className="flex items-center gap-2 text-[10.5px] font-semibold text-emerald-600 dark:text-emerald-400">
+                      <span className="flex-shrink-0 w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                      <span>Alert sent to School Admin dashboard</span>
                     </div>
                   </div>
                   <button
