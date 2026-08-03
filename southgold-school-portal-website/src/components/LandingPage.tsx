@@ -59,6 +59,42 @@ export default function LandingPage({
   const [selectedActivity, setSelectedActivity] = useState<SchoolActivity | null>(null);
   const [selectedBulletin, setSelectedBulletin] = useState<{ kind: 'news' | 'announcement'; date: string; title: string; content: string; image?: string } | null>(null);
   const [selectedGalleryIndex, setSelectedGalleryIndex] = useState<number | null>(null);
+
+  // Live Chat Support Sandbox -- public-facing automated help widget
+  const [liveChatOpen, setLiveChatOpen] = useState(false);
+  const [liveChatInput, setLiveChatInput] = useState('');
+  const [liveChatMessages, setLiveChatMessages] = useState([
+    { sender: 'AI Assistant', text: 'Welcome to SouthGold Help Desk. How can we support you today?' }
+  ]);
+
+  const handleSendLiveChat = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!liveChatInput.trim()) return;
+
+    const userText = liveChatInput;
+    setLiveChatMessages(prev => [...prev, { sender: 'You', text: userText }]);
+    setLiveChatInput('');
+
+    setTimeout(() => {
+      let responseText = "Thanks for reaching out! For anything specific to your query, please submit an inquiry ticket below and our admissions desk will follow up within 24 hours.";
+      const queryLower = userText.toLowerCase();
+      if (queryLower.includes('admission') || queryLower.includes('enroll') || queryLower.includes('apply')) {
+        responseText = "We're currently accepting applications for Preschool, Primary, and Junior Secondary classes. Fill out the 'Submit An Admission Ticket' form below and our admissions desk will reach out with the next steps.";
+      } else if (queryLower.includes('fee') || queryLower.includes('tuition') || queryLower.includes('payment') || queryLower.includes('price') || queryLower.includes('cost')) {
+        responseText = "Tuition fees vary by class level. For a detailed fee breakdown, please chat with our registrar directly on WhatsApp or submit an inquiry ticket below.";
+      } else if (queryLower.includes('result') || queryLower.includes('grade') || queryLower.includes('report card')) {
+        responseText = "Parents can view report cards by logging into the Parent Portal once grades have been published by the school administrator.";
+      } else if (queryLower.includes('class') || queryLower.includes('arm') || queryLower.includes('curriculum')) {
+        responseText = "We run Preschool, Primary, and Junior Secondary classes. For details on class placement or the curriculum, please submit an inquiry ticket below.";
+      } else if (queryLower.includes('location') || queryLower.includes('address') || queryLower.includes('where')) {
+        responseText = `We're located at ${schoolAddress || '3, Fagbeyi Ige, Olusi crescent, Hopeville Estate, Haruna B/Stop. Sangotedo, Lagos, Nigeria'}.`;
+      } else if (queryLower.includes('contact') || queryLower.includes('phone') || queryLower.includes('call') || queryLower.includes('whatsapp')) {
+        responseText = `You can reach our registrar directly at ${schoolPhone || '+234 803 123 4567'} or via the WhatsApp button in the corner of this page.`;
+      }
+
+      setLiveChatMessages(prev => [...prev, { sender: 'AI Assistant', text: responseText }]);
+    }, 900);
+  };
   const [cms, setCms] = useState<any>({
     motto: 'Learn and Grow Together.',
     whatsapp: '+234 803 123 4567',
@@ -1443,6 +1479,64 @@ export default function LandingPage({
 
         </div>
       </footer>
+
+      {/* Live Chat Support Sandbox -- floating widget */}
+      {liveChatOpen && (
+        <div className="fixed bottom-40 right-6 z-50 w-[90vw] max-w-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl flex flex-col h-96 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+          <div className="bg-blue-600 text-white px-4 py-3 flex items-center justify-between shrink-0">
+            <div>
+              <h5 className="text-xs font-bold uppercase tracking-widest">Live Chat Support Sandbox</h5>
+              <span className="text-[9px] text-blue-100">Instantly converse with counselors</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setLiveChatOpen(false)}
+              className="p-1 rounded hover:bg-white/10 cursor-pointer"
+            >
+              <X size={16} />
+            </button>
+          </div>
+
+          <div className="flex-1 overflow-y-auto space-y-2.5 p-3 text-[11px]">
+            {liveChatMessages.map((msg, idx) => (
+              <div key={idx} className={`p-2 rounded-lg max-w-[85%] ${
+                msg.sender === 'You'
+                  ? 'bg-blue-50 text-blue-600 dark:bg-blue-950/20 dark:text-blue-400 ml-auto'
+                  : 'bg-slate-100 text-slate-700 dark:bg-slate-850 dark:text-slate-350 mr-auto'
+              }`}>
+                <span className="text-[9px] font-bold block mb-0.5">{msg.sender}</span>
+                <p className="leading-tight">{msg.text}</p>
+              </div>
+            ))}
+          </div>
+
+          <form onSubmit={handleSendLiveChat} className="flex gap-1.5 p-3 border-t border-slate-100 dark:border-slate-850 shrink-0">
+            <input
+              type="text"
+              placeholder="Type your question..."
+              value={liveChatInput}
+              onChange={(e) => setLiveChatInput(e.target.value)}
+              className="flex-1 bg-slate-50 dark:bg-slate-850 px-2.5 py-2 rounded-lg text-xs focus:outline-none text-slate-800 dark:text-slate-100"
+            />
+            <button
+              type="submit"
+              className="bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-lg shrink-0 cursor-pointer"
+            >
+              <Send size={14} />
+            </button>
+          </form>
+        </div>
+      )}
+
+      <button
+        type="button"
+        onClick={() => setLiveChatOpen((v) => !v)}
+        className="fixed bottom-24 right-6 z-50 flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white w-14 h-14 rounded-full shadow-lg hover:shadow-xl transition-all hover:scale-105 active:scale-95 cursor-pointer"
+        id="floating-livechat-badge"
+        title="Live Chat Support"
+      >
+        {liveChatOpen ? <X size={22} /> : <MessageSquare size={22} />}
+      </button>
 
       {/* Floating WhatsApp Quick-Connect Widget */}
       <a

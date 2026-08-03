@@ -60,12 +60,6 @@ export default function SupportDesk({
   });
   const [adminReply, setAdminReply] = useState('');
 
-  // Live chat simulation states
-  const [chatInput, setChatInput] = useState('');
-  const [chatMessages, setChatMessages] = useState([
-    { sender: 'AI Assistant', text: 'Welcome to SouthGold Help Desk. How can we support you today?', date: 'Just now' }
-  ]);
-
   const [notif, setNotif] = useState<string | null>(null);
 
   // Parent-Teacher messaging states
@@ -242,29 +236,6 @@ export default function SupportDesk({
     });
     onSetTickets(updated);
     showNotice('Help Desk ticket status marked as RESOLVED.');
-  };
-
-  const handleSendLiveChatMessage = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!chatInput) return;
-
-    const userMsg = { sender: 'You', text: chatInput, date: 'Just now' };
-    setChatMessages(prev => [...prev, userMsg]);
-    setChatInput('');
-
-    setTimeout(() => {
-      let responseText = "Thank you. Your message has been routed to our student service coordinators, who will respond shortly.";
-      const queryLower = chatInput.toLowerCase();
-      if (queryLower.includes('result') || queryLower.includes('grades')) {
-        responseText = "Report cards are visible in the Parent Portal once grades have been confirmed and published by the administrator.";
-      } else if (queryLower.includes('fees') || queryLower.includes('payment')) {
-        responseText = "School tuition fees are processed outside the portal. Parents should handle payments offline and coordinate directly via the School WhatsApp contact listed on the landing page.";
-      } else if (queryLower.includes('class') || queryLower.includes('arm')) {
-        responseText = "To register or change a student class arm, please contact the admission office at admissions@southgoldmontessori.com.";
-      }
-
-      setChatMessages(prev => [...prev, { sender: 'AI bot Responder', text: responseText, date: 'Just now' }]);
-    }, 1200);
   };
 
   const activeReviewTicket = tickets.find(t => t.id === selectedTicketId);
@@ -593,45 +564,6 @@ export default function SupportDesk({
                 </form>
               </div>
             )}
-
-            {/* Live Chat Simulated panel */}
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 space-y-3 flex flex-col h-64 justify-between">
-              <div>
-                <h5 className="text-xs font-bold text-slate-800 dark:text-slate-100 uppercase tracking-widest pl-1 border-l-3 border-blue-600">
-                  Live Chat Support Sandbox
-                </h5>
-                <span className="text-[9px] text-slate-400">Instantly converse with counselors</span>
-              </div>
-
-              <div className="flex-1 overflow-y-auto space-y-2.5 my-2 pr-1 h-32 text-[11px]">
-                {chatMessages.map((msg, idx) => (
-                  <div key={idx} className={`p-2 rounded-lg max-w-[85%] ${
-                    msg.sender === 'You' 
-                      ? 'bg-blue-50 text-blue-600 dark:bg-blue-950/20 dark:text-blue-400 self-end ml-auto' 
-                      : 'bg-slate-100 text-slate-700 dark:bg-slate-850 dark:text-slate-350 mr-auto'
-                  }`}>
-                    <span className="text-[9px] font-bold block mb-0.5">{msg.sender}</span>
-                    <p className="leading-tight">{msg.text}</p>
-                  </div>
-                ))}
-              </div>
-
-              <form onSubmit={handleSendLiveChatMessage} className="flex gap-1.5 pt-2 border-t border-slate-100 dark:border-slate-850">
-                <input
-                  type="text"
-                  placeholder="Type help request..."
-                  value={chatInput}
-                  onChange={(e) => setChatInput(e.target.value)}
-                  className="flex-1 bg-slate-55 dark:bg-slate-850 px-2 py-1.5 rounded text-xs focus:outline-none"
-                />
-                <button
-                  type="submit"
-                  className="bg-blue-600 hover:bg-blue-700 text-white p-1.8 rounded text-xs shrink-0"
-                >
-                  <Send size={12} />
-                </button>
-              </form>
-            </div>
           </div>
 
           {/* Right Side Column (2 cols width): Administration Active Tickets reviewing */}
