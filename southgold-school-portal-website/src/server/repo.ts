@@ -1131,13 +1131,17 @@ export const CMS = {
     };
   },
   update: async (payload: any) => {
-    const dbPayload = {
-      id: 'landing_cms',
-      content: payload
-    };
-    const { error } = await supabase.from('cms_content').upsert(dbPayload);
+    // Merge onto existing content rather than replacing it wholesale, so a
+    // partial payload can never silently wipe out the rest of the CMS data.
+    const { data: existing } = await supabase
+      .from('cms_content')
+      .select('content')
+      .eq('id', 'landing_cms')
+      .maybeSingle();
+    const mergedContent = { ...(existing?.content ?? {}), ...payload };
+    const { error } = await supabase.from('cms_content').upsert({ id: 'landing_cms', content: mergedContent });
     if (error) throw error;
-    return payload;
+    return mergedContent;
   }
 };
 
