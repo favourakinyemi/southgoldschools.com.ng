@@ -104,6 +104,7 @@ export default function AcademicTermManager({
     announcements: []
   });
   const [loadingCms, setLoadingCms] = useState(true);
+  const [uploadingCmsImage, setUploadingCmsImage] = useState(false);
 
   // States for adding news/announcements
   const [newNewsTitle, setNewNewsTitle] = useState('');
@@ -130,6 +131,10 @@ export default function AcademicTermManager({
   }, []);
 
   const handleSaveCms = async () => {
+    if (uploadingCmsImage) {
+      alert('An image is still uploading -- please wait for it to finish before saving.');
+      return;
+    }
     try {
       const res = await fetch('/api/cms', {
         method: 'PUT',
@@ -151,6 +156,7 @@ export default function AcademicTermManager({
     const file = e.target.files?.[0];
     if (!file) return;
 
+    setUploadingCmsImage(true);
     const reader = new FileReader();
     reader.onloadend = async () => {
       const base64 = reader.result as string;
@@ -173,14 +179,17 @@ export default function AcademicTermManager({
           } else if (targetField === 'gallery') {
             setCms((prev: any) => ({ ...prev, gallery: [...(prev.gallery || []), data.publicUrl] }));
           }
-          showNotice('CMS image uploaded successfully.');
+          showNotice('CMS image uploaded successfully. Click "Save All CMS Configurations" to publish it.');
         } else {
           alert('Upload failed: ' + (data.error || 'Unknown error'));
         }
       } catch (err: any) {
         alert('Upload failed: ' + err.message);
+      } finally {
+        setUploadingCmsImage(false);
       }
     };
+    reader.onerror = () => setUploadingCmsImage(false);
     reader.readAsDataURL(file);
   };
 
@@ -895,9 +904,10 @@ export default function AcademicTermManager({
               <button
                 type="button"
                 onClick={handleSaveCms}
-                className="bg-[#2563eb] hover:bg-blue-700 text-white font-bold text-xs py-1.5 px-4 rounded-lg shadow transition-colors cursor-pointer"
+                disabled={uploadingCmsImage}
+                className="bg-[#2563eb] hover:bg-blue-700 text-white font-bold text-xs py-1.5 px-4 rounded-lg shadow transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Save Landing Page CMS
+                {uploadingCmsImage ? 'Uploading image...' : 'Save Landing Page CMS'}
               </button>
             </div>
 
@@ -1313,13 +1323,17 @@ export default function AcademicTermManager({
                 </div>
 
                 {/* Save bottom bar */}
-                <div className="flex justify-end pt-2 border-t dark:border-slate-800">
+                <div className="flex justify-end items-center gap-3 pt-2 border-t dark:border-slate-800">
+                  {uploadingCmsImage && (
+                    <span className="text-[10px] text-amber-600 dark:text-amber-500 font-semibold">Uploading image, please wait...</span>
+                  )}
                   <button
                     type="button"
                     onClick={handleSaveCms}
-                    className="bg-[#2563eb] hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg text-xs shadow-md transition-colors cursor-pointer"
+                    disabled={uploadingCmsImage}
+                    className="bg-[#2563eb] hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg text-xs shadow-md transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Save All CMS Configurations
+                    {uploadingCmsImage ? 'Uploading image...' : 'Save All CMS Configurations'}
                   </button>
                 </div>
               </div>
