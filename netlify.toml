@@ -10,3 +10,14 @@
 # in the southgold-school-portal-website/ subfolder, not the repo root.
 [[plugins]]
   package = "@netlify/plugin-nextjs"
+
+# The [[...slug]] optional catch-all route matches every path, including
+# files that exist in public/ (like this Google verification file), so on
+# Netlify's Next.js Runtime the request gets routed to the Next.js function
+# instead of the static asset. Force this exact path to be served straight
+# from the CDN, bypassing the function entirely.
+[[redirects]]
+  from = "/googlea5a363ddc526766a.html"
+  to = "/googlea5a363ddc526766a.html"
+  status = 200
+  force = true
