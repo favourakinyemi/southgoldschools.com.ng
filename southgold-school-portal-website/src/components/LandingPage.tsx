@@ -57,6 +57,7 @@ export default function LandingPage({
   globalLoginError
 }: LandingPageProps) {
   const [selectedActivity, setSelectedActivity] = useState<SchoolActivity | null>(null);
+  const [selectedBulletin, setSelectedBulletin] = useState<{ kind: 'news' | 'announcement'; date: string; title: string; content: string; image?: string } | null>(null);
   const [cms, setCms] = useState<any>({
     motto: 'Learn and Grow Together.',
     whatsapp: '+234 803 123 4567',
@@ -87,13 +88,16 @@ export default function LandingPage({
   });
 
   useEffect(() => {
-    if (!selectedActivity) return;
+    if (!selectedActivity && !selectedBulletin) return;
     const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setSelectedActivity(null);
+      if (e.key === 'Escape') {
+        setSelectedActivity(null);
+        setSelectedBulletin(null);
+      }
     };
     window.addEventListener('keydown', handleEscape);
     return () => window.removeEventListener('keydown', handleEscape);
-  }, [selectedActivity]);
+  }, [selectedActivity, selectedBulletin]);
 
   useEffect(() => {
     fetch('/api/cms')
@@ -935,6 +939,49 @@ export default function LandingPage({
         </div>
       )}
 
+      {/* NEWS / ANNOUNCEMENT DETAIL MODAL */}
+      {selectedBulletin && (
+        <div
+          className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4 z-50"
+          onClick={() => setSelectedBulletin(null)}
+        >
+          <div
+            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 w-full max-w-lg rounded-2xl shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="relative">
+              {selectedBulletin.image ? (
+                <img
+                  src={selectedBulletin.image}
+                  alt={selectedBulletin.title}
+                  className="w-full h-56 object-cover"
+                  referrerPolicy="no-referrer"
+                />
+              ) : null}
+              <button
+                type="button"
+                onClick={() => setSelectedBulletin(null)}
+                className={`absolute top-3 right-3 rounded-full p-1.5 cursor-pointer ${selectedBulletin.image ? 'bg-slate-950/60 hover:bg-slate-950/80 text-white' : 'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300'}`}
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <div className="p-6 space-y-3">
+              <span className={`text-[9px] font-black uppercase tracking-wider ${selectedBulletin.kind === 'news' ? 'text-amber-600' : 'text-blue-600'}`}>
+                {selectedBulletin.kind === 'news' ? 'School News' : 'Announcement'}
+              </span>
+              <h3 className="font-display font-extrabold text-lg text-slate-900 dark:text-slate-50 uppercase tracking-tight">
+                {selectedBulletin.title}
+              </h3>
+              <span className="block text-[10px] font-bold text-slate-400">{selectedBulletin.date}</span>
+              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed whitespace-pre-line">
+                {selectedBulletin.content}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* NEWS & ANNOUNCEMENTS BOARD */}
       <section className="py-12 bg-slate-50 dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -950,16 +997,24 @@ export default function LandingPage({
               <div className="space-y-4">
                 {cms.news && cms.news.length > 0 ? (
                   cms.news.map((n: any, idx: number) => (
-                    <div key={n.id || idx} className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-850 space-y-2">
+                    <button
+                      type="button"
+                      key={n.id || idx}
+                      onClick={() => setSelectedBulletin({ kind: 'news', date: n.date, title: n.title, content: n.content, image: n.image })}
+                      className="w-full text-left p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-850 space-y-2 hover:border-amber-500/40 hover:shadow-md transition-all cursor-pointer"
+                    >
                       {n.image && (
                         <img src={n.image} alt={n.title} className="w-full h-36 object-cover rounded-xl" referrerPolicy="no-referrer" />
                       )}
                       <div className="space-y-1">
                         <span className="text-[9px] font-bold text-slate-400">{n.date}</span>
                         <h4 className="font-bold text-xs text-slate-900 dark:text-slate-100 uppercase">{n.title}</h4>
-                        <p className="text-[11px] text-slate-500 leading-relaxed font-semibold">{n.content}</p>
+                        <p className="text-[11px] text-slate-500 leading-relaxed font-semibold line-clamp-2">{n.content}</p>
+                        <span className="inline-block text-[10px] font-bold text-[#2563eb] uppercase tracking-wide">
+                          Read more &rarr;
+                        </span>
                       </div>
-                    </div>
+                    </button>
                   ))
                 ) : (
                   <p className="text-xs text-slate-400">No news published yet.</p>
@@ -978,16 +1033,24 @@ export default function LandingPage({
               <div className="space-y-4">
                 {cms.announcements && cms.announcements.length > 0 ? (
                   cms.announcements.map((a: any, idx: number) => (
-                    <div key={a.id || idx} className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-850 border-l-4 border-l-blue-500 space-y-2">
+                    <button
+                      type="button"
+                      key={a.id || idx}
+                      onClick={() => setSelectedBulletin({ kind: 'announcement', date: a.date, title: a.title, content: a.content, image: a.image })}
+                      className="w-full text-left p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-850 border-l-4 border-l-blue-500 space-y-2 hover:shadow-md transition-all cursor-pointer"
+                    >
                       {a.image && (
                         <img src={a.image} alt={a.title} className="w-full h-36 object-cover rounded-xl" referrerPolicy="no-referrer" />
                       )}
                       <div className="space-y-1">
                         <span className="text-[9px] font-bold text-slate-400">{a.date}</span>
                         <h4 className="font-bold text-xs text-slate-900 dark:text-slate-100 uppercase">{a.title}</h4>
-                        <p className="text-[11px] text-slate-500 leading-relaxed font-semibold">{a.content}</p>
+                        <p className="text-[11px] text-slate-500 leading-relaxed font-semibold line-clamp-2">{a.content}</p>
+                        <span className="inline-block text-[10px] font-bold text-[#2563eb] uppercase tracking-wide">
+                          Read more &rarr;
+                        </span>
                       </div>
-                    </div>
+                    </button>
                   ))
                 ) : (
                   <p className="text-xs text-slate-400">No announcements published yet.</p>
