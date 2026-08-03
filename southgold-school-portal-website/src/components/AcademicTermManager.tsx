@@ -423,9 +423,9 @@ export default function AcademicTermManager({
   return (
     <div className="space-y-6">
       
-      {/* Visual notification bar */}
+      {/* Toast notification (fixed so it's visible regardless of scroll position) */}
       {notif && (
-        <div className="p-3 bg-emerald-50 text-emerald-800 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 rounded-lg text-xs font-semibold flex items-center gap-2">
+        <div className="fixed top-5 right-5 z-50 p-3 bg-emerald-50 text-emerald-800 border border-emerald-200 dark:bg-emerald-950/90 dark:text-emerald-300 rounded-lg text-xs font-semibold flex items-center gap-2 shadow-xl">
           <Check size={14} />
           <span>{notif}</span>
         </div>
