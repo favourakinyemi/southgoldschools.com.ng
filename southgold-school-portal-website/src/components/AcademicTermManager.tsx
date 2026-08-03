@@ -110,10 +110,12 @@ export default function AcademicTermManager({
   const [newNewsTitle, setNewNewsTitle] = useState('');
   const [newNewsContent, setNewNewsContent] = useState('');
   const [newNewsDate, setNewNewsDate] = useState(new Date().toISOString().split('T')[0]);
+  const [newNewsImage, setNewNewsImage] = useState('');
 
   const [newAnnounceTitle, setNewAnnounceTitle] = useState('');
   const [newAnnounceContent, setNewAnnounceContent] = useState('');
   const [newAnnounceDate, setNewAnnounceDate] = useState(new Date().toISOString().split('T')[0]);
+  const [newAnnounceImage, setNewAnnounceImage] = useState('');
 
   useEffect(() => {
     fetch('/api/cms')
@@ -193,7 +195,45 @@ export default function AcademicTermManager({
     reader.readAsDataURL(file);
   };
 
+  const handleDraftImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, setter: (url: string) => void) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingCmsImage(true);
+    const reader = new FileReader();
+    reader.onloadend = async () => {
+      const base64 = reader.result as string;
+      try {
+        const res = await fetch('/api/school/upload', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            fileBase64: base64,
+            fileName: file.name,
+            folderName: 'cms'
+          })
+        });
+        const data = await res.json();
+        if (data.success && data.publicUrl) {
+          setter(data.publicUrl);
+        } else {
+          alert('Upload failed: ' + (data.error || 'Unknown error'));
+        }
+      } catch (err: any) {
+        alert('Upload failed: ' + err.message);
+      } finally {
+        setUploadingCmsImage(false);
+      }
+    };
+    reader.onerror = () => setUploadingCmsImage(false);
+    reader.readAsDataURL(file);
+  };
+
   const handleAddNews = () => {
+    if (uploadingCmsImage) {
+      alert('The image is still uploading -- please wait for it to finish first.');
+      return;
+    }
     if (!newNewsTitle || !newNewsContent) {
       alert('Please fill in both title and content for the news article.');
       return;
@@ -202,7 +242,8 @@ export default function AcademicTermManager({
       id: `news_${Date.now()}`,
       title: newNewsTitle,
       content: newNewsContent,
-      date: newNewsDate
+      date: newNewsDate,
+      image: newNewsImage || undefined
     };
     setCms((prev: any) => ({
       ...prev,
@@ -210,6 +251,7 @@ export default function AcademicTermManager({
     }));
     setNewNewsTitle('');
     setNewNewsContent('');
+    setNewNewsImage('');
     showNotice('News item added (click Save at the bottom to apply).');
   };
 
@@ -222,6 +264,10 @@ export default function AcademicTermManager({
   };
 
   const handleAddAnnouncement = () => {
+    if (uploadingCmsImage) {
+      alert('The image is still uploading -- please wait for it to finish first.');
+      return;
+    }
     if (!newAnnounceTitle || !newAnnounceContent) {
       alert('Please fill in both title and content for the announcement.');
       return;
@@ -230,7 +276,8 @@ export default function AcademicTermManager({
       id: `ann_${Date.now()}`,
       title: newAnnounceTitle,
       content: newAnnounceContent,
-      date: newAnnounceDate
+      date: newAnnounceDate,
+      image: newAnnounceImage || undefined
     };
     setCms((prev: any) => ({
       ...prev,
@@ -238,6 +285,7 @@ export default function AcademicTermManager({
     }));
     setNewAnnounceTitle('');
     setNewAnnounceContent('');
+    setNewAnnounceImage('');
     showNotice('Announcement item added (click Save at the bottom to apply).');
   };
 
@@ -1214,9 +1262,10 @@ export default function AcademicTermManager({
                       <button
                         type="button"
                         onClick={handleAddNews}
-                        className="bg-amber-600 hover:bg-amber-700 text-white font-bold text-[10px] py-1 rounded-lg cursor-pointer"
+                        disabled={uploadingCmsImage}
+                        className="bg-amber-600 hover:bg-amber-700 text-white font-bold text-[10px] py-1 rounded-lg cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        Publish Draft Article
+                        {uploadingCmsImage ? 'Uploading...' : 'Publish Draft Article'}
                       </button>
                     </div>
                     <textarea
@@ -1226,6 +1275,33 @@ export default function AcademicTermManager({
                       rows={2}
                       className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded text-xs py-1.5 px-2.5 text-slate-850 dark:text-slate-100 focus:outline-none"
                     />
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => handleDraftImageUpload(e, setNewNewsImage)}
+                        className="hidden"
+                        id="news-img-upload"
+                      />
+                      <label
+                        htmlFor="news-img-upload"
+                        className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-[9px] py-1 px-2 rounded-lg flex items-center gap-1 cursor-pointer border border-slate-200"
+                      >
+                        <Image size={10} /> {newNewsImage ? 'Change Image' : 'Add Image (optional)'}
+                      </label>
+                      {newNewsImage && (
+                        <div className="relative">
+                          <img src={newNewsImage} className="h-8 w-8 object-cover rounded border" />
+                          <button
+                            type="button"
+                            onClick={() => setNewNewsImage('')}
+                            className="absolute -top-1.5 -right-1.5 bg-red-600 text-white rounded-full p-0.5 shadow-md hover:bg-red-700"
+                          >
+                            <Trash2 size={8} />
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   {/* List News Items */}
@@ -1235,15 +1311,20 @@ export default function AcademicTermManager({
                       {cms.news && cms.news.length > 0 ? (
                         cms.news.map((item: any) => (
                           <div key={item.id} className="p-2 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-lg flex justify-between items-center gap-4">
-                            <div className="space-y-0.5">
-                              <span className="text-[9px] font-bold text-slate-400">{item.date}</span>
-                              <h5 className="font-bold text-xs text-slate-800 dark:text-slate-200 uppercase">{item.title}</h5>
-                              <p className="text-[10px] text-slate-455 truncate max-w-lg">{item.content}</p>
+                            <div className="flex items-center gap-2 min-w-0">
+                              {item.image && (
+                                <img src={item.image} className="h-8 w-8 object-cover rounded border flex-shrink-0" />
+                              )}
+                              <div className="space-y-0.5 min-w-0">
+                                <span className="text-[9px] font-bold text-slate-400">{item.date}</span>
+                                <h5 className="font-bold text-xs text-slate-800 dark:text-slate-200 uppercase">{item.title}</h5>
+                                <p className="text-[10px] text-slate-455 truncate max-w-lg">{item.content}</p>
+                              </div>
                             </div>
                             <button
                               type="button"
                               onClick={() => handleRemoveNews(item.id)}
-                              className="text-red-600 hover:text-red-750 p-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+                              className="text-red-600 hover:text-red-750 p-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer flex-shrink-0"
                             >
                               <Trash2 size={12} />
                             </button>
@@ -1280,9 +1361,10 @@ export default function AcademicTermManager({
                       <button
                         type="button"
                         onClick={handleAddAnnouncement}
-                        className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-[10px] py-1 rounded-lg cursor-pointer"
+                        disabled={uploadingCmsImage}
+                        className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-[10px] py-1 rounded-lg cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        Publish Draft Alert
+                        {uploadingCmsImage ? 'Uploading...' : 'Publish Draft Alert'}
                       </button>
                     </div>
                     <textarea
@@ -1292,6 +1374,33 @@ export default function AcademicTermManager({
                       rows={2}
                       className="w-full bg-white dark:bg-slate-955 border border-slate-200 dark:border-slate-800 rounded text-xs py-1.5 px-2.5 text-slate-850 dark:text-slate-100 focus:outline-none"
                     />
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => handleDraftImageUpload(e, setNewAnnounceImage)}
+                        className="hidden"
+                        id="announce-img-upload"
+                      />
+                      <label
+                        htmlFor="announce-img-upload"
+                        className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-[9px] py-1 px-2 rounded-lg flex items-center gap-1 cursor-pointer border border-slate-200"
+                      >
+                        <Image size={10} /> {newAnnounceImage ? 'Change Image' : 'Add Image (optional)'}
+                      </label>
+                      {newAnnounceImage && (
+                        <div className="relative">
+                          <img src={newAnnounceImage} className="h-8 w-8 object-cover rounded border" />
+                          <button
+                            type="button"
+                            onClick={() => setNewAnnounceImage('')}
+                            className="absolute -top-1.5 -right-1.5 bg-red-600 text-white rounded-full p-0.5 shadow-md hover:bg-red-700"
+                          >
+                            <Trash2 size={8} />
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   {/* List Announcements */}
@@ -1301,15 +1410,20 @@ export default function AcademicTermManager({
                       {cms.announcements && cms.announcements.length > 0 ? (
                         cms.announcements.map((item: any) => (
                           <div key={item.id} className="p-2 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-lg flex justify-between items-center gap-4">
-                            <div className="space-y-0.5">
-                              <span className="text-[9px] font-bold text-slate-400">{item.date}</span>
-                              <h5 className="font-bold text-xs text-slate-800 dark:text-slate-200 uppercase">{item.title}</h5>
-                              <p className="text-[10px] text-slate-455 truncate max-w-lg">{item.content}</p>
+                            <div className="flex items-center gap-2 min-w-0">
+                              {item.image && (
+                                <img src={item.image} className="h-8 w-8 object-cover rounded border flex-shrink-0" />
+                              )}
+                              <div className="space-y-0.5 min-w-0">
+                                <span className="text-[9px] font-bold text-slate-400">{item.date}</span>
+                                <h5 className="font-bold text-xs text-slate-800 dark:text-slate-200 uppercase">{item.title}</h5>
+                                <p className="text-[10px] text-slate-455 truncate max-w-lg">{item.content}</p>
+                              </div>
                             </div>
                             <button
                               type="button"
                               onClick={() => handleRemoveAnnouncement(item.id)}
-                              className="text-red-600 hover:text-red-750 p-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+                              className="text-red-600 hover:text-red-750 p-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer flex-shrink-0"
                             >
                               <Trash2 size={12} />
                             </button>

@@ -886,10 +886,15 @@ export default function LandingPage({
               <div className="space-y-4">
                 {cms.news && cms.news.length > 0 ? (
                   cms.news.map((n: any, idx: number) => (
-                    <div key={n.id || idx} className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-850 space-y-1">
-                      <span className="text-[9px] font-bold text-slate-400">{n.date}</span>
-                      <h4 className="font-bold text-xs text-slate-900 dark:text-slate-100 uppercase">{n.title}</h4>
-                      <p className="text-[11px] text-slate-500 leading-relaxed font-semibold">{n.content}</p>
+                    <div key={n.id || idx} className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-850 space-y-2">
+                      {n.image && (
+                        <img src={n.image} alt={n.title} className="w-full h-36 object-cover rounded-xl" referrerPolicy="no-referrer" />
+                      )}
+                      <div className="space-y-1">
+                        <span className="text-[9px] font-bold text-slate-400">{n.date}</span>
+                        <h4 className="font-bold text-xs text-slate-900 dark:text-slate-100 uppercase">{n.title}</h4>
+                        <p className="text-[11px] text-slate-500 leading-relaxed font-semibold">{n.content}</p>
+                      </div>
                     </div>
                   ))
                 ) : (
@@ -909,10 +914,15 @@ export default function LandingPage({
               <div className="space-y-4">
                 {cms.announcements && cms.announcements.length > 0 ? (
                   cms.announcements.map((a: any, idx: number) => (
-                    <div key={a.id || idx} className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-850 border-l-4 border-l-blue-500 space-y-1">
-                      <span className="text-[9px] font-bold text-slate-400">{a.date}</span>
-                      <h4 className="font-bold text-xs text-slate-900 dark:text-slate-100 uppercase">{a.title}</h4>
-                      <p className="text-[11px] text-slate-500 leading-relaxed font-semibold">{a.content}</p>
+                    <div key={a.id || idx} className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-850 border-l-4 border-l-blue-500 space-y-2">
+                      {a.image && (
+                        <img src={a.image} alt={a.title} className="w-full h-36 object-cover rounded-xl" referrerPolicy="no-referrer" />
+                      )}
+                      <div className="space-y-1">
+                        <span className="text-[9px] font-bold text-slate-400">{a.date}</span>
+                        <h4 className="font-bold text-xs text-slate-900 dark:text-slate-100 uppercase">{a.title}</h4>
+                        <p className="text-[11px] text-slate-500 leading-relaxed font-semibold">{a.content}</p>
+                      </div>
                     </div>
                   ))
                 ) : (
