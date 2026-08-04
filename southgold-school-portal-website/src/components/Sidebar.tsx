@@ -154,7 +154,7 @@ export default function Sidebar({
                 <h1 className="font-bold text-base text-white leading-none truncate max-w-[120px]" title={schoolName || 'SouthGold'}>
                   {schoolName ? schoolName.split(' ')[0] : 'SouthGold'}
                 </h1>
-                <p className="text-[10px] text-slate-400 mt-1">Montessori Portal</p>
+                <p className="text-[10px] text-slate-400 mt-1">Schools Portal</p>
               </div>
             </div>
             <button 
