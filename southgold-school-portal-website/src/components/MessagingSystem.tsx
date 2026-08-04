@@ -9,7 +9,8 @@ import {
   Smartphone, 
   UserPlus, 
   Users,
-  Megaphone 
+  Megaphone,
+  ChevronDown
 } from 'lucide-react';
 import { SchoolNotification, UserRole } from '../types';
 
@@ -46,6 +47,7 @@ export default function MessagingSystem({
   const [messageInput, setMessageInput] = useState('');
 
   const [notifText, setNotifText] = useState<string | null>(null);
+  const [expandedNoticeId, setExpandedNoticeId] = useState<string | null>(null);
 
   // Email/SMS simulate switches
   const [simulateEmail, setSimulateEmail] = useState(true);
@@ -133,31 +135,45 @@ export default function MessagingSystem({
           <p className="text-[11px] text-slate-400">Broad academic and announcement notices registered inside this session.</p>
 
           <div className="space-y-3 max-h-96 overflow-y-auto pr-1">
-            {notifications.map((not) => (
-              <div key={not.id} className="p-3 bg-slate-55 dark:bg-slate-850 rounded-lg border border-slate-150 dark:border-slate-800/60 shadow-3xs space-y-2">
-                <div className="flex justify-between items-center text-[10px]">
-                  <span className={`px-2 py-0.5 rounded font-extrabold font-mono text-[9px] uppercase ${
-                    not.category === 'Academic' ? 'bg-indigo-100 text-indigo-800' :
-                    not.category === 'Billing' ? 'bg-blue-50 text-blue-700 dark:bg-blue-950/20 dark:text-blue-405' :
-                    'bg-slate-100 text-slate-700'
-                  }`}>
-                    {not.category}
-                  </span>
-                  <span className="text-slate-400">{not.date}</span>
-                </div>
-                
-                <div>
-                  <h5 className="text-xs font-bold text-slate-705 dark:text-slate-200 leading-snug">{not.title}</h5>
-                  <p className="text-[11px] text-slate-500 mt-1">{not.content}</p>
-                </div>
+            {notifications.map((not) => {
+              const isExpanded = expandedNoticeId === not.id;
+              return (
+                <button
+                  type="button"
+                  key={not.id}
+                  onClick={() => setExpandedNoticeId(isExpanded ? null : not.id)}
+                  className="w-full text-left p-3 bg-slate-55 dark:bg-slate-850 rounded-lg border border-slate-150 dark:border-slate-800/60 shadow-3xs space-y-2 hover:border-blue-500/40 transition-colors cursor-pointer"
+                >
+                  <div className="flex justify-between items-center text-[10px]">
+                    <span className={`px-2 py-0.5 rounded font-extrabold font-mono text-[9px] uppercase ${
+                      not.category === 'Academic' ? 'bg-indigo-100 text-indigo-800' :
+                      not.category === 'Billing' ? 'bg-blue-50 text-blue-700 dark:bg-blue-950/20 dark:text-blue-405' :
+                      'bg-slate-100 text-slate-700'
+                    }`}>
+                      {not.category}
+                    </span>
+                    <span className="text-slate-400">{not.date}</span>
+                  </div>
 
-                <div className="flex items-center text-[9px] text-slate-400 font-semibold gap-1 border-t border-slate-201 pt-1.5 uppercase">
-                  <span>Scope:</span>
-                  <span className="text-blue-600 dark:text-blue-400 font-semibold">{not.recipientRole} Audience</span>
-                </div>
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <h5 className="text-xs font-bold text-slate-705 dark:text-slate-200 leading-snug">{not.title}</h5>
+                      <p className={`text-[11px] text-slate-500 mt-1 ${isExpanded ? 'whitespace-pre-line' : 'line-clamp-2'}`}>
+                        {not.content}
+                      </p>
+                    </div>
+                    <ChevronDown size={14} className={`shrink-0 mt-0.5 text-slate-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                  </div>
 
-              </div>
-            ))}
+                  {isExpanded && (
+                    <div className="flex items-center text-[9px] text-slate-400 font-semibold gap-1 border-t border-slate-201 pt-1.5 uppercase">
+                      <span>Scope:</span>
+                      <span className="text-blue-600 dark:text-blue-400 font-semibold">{not.recipientRole} Audience</span>
+                    </div>
+                  )}
+                </button>
+              );
+            })}
           </div>
         </div>
 
