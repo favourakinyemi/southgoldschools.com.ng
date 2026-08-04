@@ -439,7 +439,12 @@ export default function DashboardStats({
             <h4 className="font-semibold text-sm text-slate-800 dark:text-slate-100 mb-2">School Announcement Ticker</h4>
             <div className="space-y-3">
               {notifications.filter(n => n.recipientRole === 'ALL' || n.recipientRole === 'PARENT').map((not, idx) => (
-                <div key={idx} className="bg-white dark:bg-slate-900 p-3 rounded-lg border border-slate-150 dark:border-slate-850 shadow-2xs flex items-start gap-3">
+                <button
+                  type="button"
+                  key={idx}
+                  onClick={() => setActiveTab('announcements')}
+                  className="w-full text-left bg-white dark:bg-slate-900 p-3 rounded-lg border border-slate-150 dark:border-slate-850 shadow-2xs flex items-start gap-3 hover:border-blue-500/40 hover:shadow-md transition-all cursor-pointer"
+                >
                   <span className="p-1.5 bg-blue-50 text-blue-600 dark:bg-blue-950/20 dark:text-blue-400 rounded">
                     <Bell size={14} />
                   </span>
@@ -448,7 +453,7 @@ export default function DashboardStats({
                     <p className="text-slate-500 text-[11px] mt-0.5">{not.content}</p>
                     <span className="text-[10px] text-slate-400 block mt-1">{not.date}</span>
                   </div>
-                </div>
+                </button>
               ))}
             </div>
           </div>
