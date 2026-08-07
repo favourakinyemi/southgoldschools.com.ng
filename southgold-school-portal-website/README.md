@@ -2,7 +2,7 @@
 
 A multi-role **school management platform** for SouthGold Montessori School (Lagos, Nigeria) — a public marketing site plus a role-based portal (Super Admin, School Admin, Teacher, Parent, Student) for managing students, staff, results, attendance, academic sessions, CMS content, and support tickets.
 
-> This file describes the project **as it actually runs today**. The app was originally built as a Vite + Express single-page app storing data in a flat `db.json` file; it has since been migrated to **Next.js (App Router)** with a **Supabase (Postgres)** backend. Older docs in this repo (`WEBSITE_STRUCTURE.md`, `MOCK_SYSTEM_AUDIT.md`) describe that earlier architecture and are out of date.
+> This file describes the project **as it actually runs today**. The app was originally built as a Vite + Express single-page app storing data in a flat `db.json` file; it has since been migrated to **Next.js (App Router)** with a **Supabase (Postgres)** backend. See [`WEBSITE_STRUCTURE.md`](./WEBSITE_STRUCTURE.md) for the screen-by-screen breakdown.
 
 ---
 
@@ -57,7 +57,7 @@ src/
 ├── types.ts                 # Shared TypeScript domain types
 └── data/                    # Static seed data (early-years skills, etc.)
 
-supabase/migrations/         # SQL migrations (0001 - 0013), applied via `npm run migrate`
+supabase/migrations/         # SQL migrations (0001 - 0013), applied via `npm run apply-schema`
 ```
 
 ### How the portal "routes"
@@ -84,6 +84,11 @@ Every route is `export const dynamic = 'force-dynamic'` and reads/writes Supabas
 - The token is stored **both** client-side (in `localStorage` or `sessionStorage`, depending on the "Remember me" choice) **and** server-side as an httpOnly `sb-access-token` cookie (set by `POST /api/auth/session`), so API routes can authenticate the request without the client having to attach a header.
 - Roles: `SUPER_ADMIN`, `SCHOOL_ADMIN`, `TEACHER`, `PARENT`, `STUDENT` — stored on the `users` table and checked per-route via `requireRole()`.
 
+### Onboarding & default passwords
+- New Staff Admin/Teacher/Parent/Student accounts (created by an admin from the portal) are provisioned with a default password of **`1234`**.
+- The default Super Admin (`southgold@gmail.com` / `Southgold1234`) is created idempotently, either by `npm run setup-admin` or by hitting `POST /api/auth/super-admin/init`.
+- All accounts use Supabase Auth directly (hashed, never stored in plain text). Accounts with `can_change_password` set can change their password from the profile menu after logging in.
+
 ### A note on caching
 `src/server/db.ts` creates the Supabase client with a custom `fetch` that forces `cache: 'no-store'`. This is necessary because Next.js patches the server-side global `fetch()` with its own Data Cache — without this override, a write could succeed in Postgres while the very next read still returned stale data (this was a real, confirmed bug). `next.config.js` additionally sets `Cache-Control: no-store` on all `/api/*` responses so Netlify's edge doesn't cache them either.
 
@@ -91,7 +96,7 @@ Every route is `export const dynamic = 'force-dynamic'` and reads/writes Supabas
 
 ## 3. Database (Supabase Postgres)
 
-No flat-file/JSON database — all data lives in Supabase Postgres. Schema is defined by the SQL files in `supabase/migrations/`, applied via `npm run migrate` (or `npm run apply-schema`). Key tables:
+No flat-file/JSON database — all data lives in Supabase Postgres. Schema is defined by the SQL files in `supabase/migrations/`, applied in order via `npm run apply-schema` (or by pasting them into the Supabase SQL Editor by hand, in filename order). Key tables:
 
 `users`, `students`, `parents`, `teachers`, `staff_admins`, `super_admins`, `subjects`, `classes_subjects`, `results`, `early_years_results`, `assessment_items`, `result_approvals`, `attendance`, `sessions`, `configurations`, `cms_content`, `notifications`, `tickets`.
 
@@ -143,9 +148,11 @@ SMTP_FROM=
 Apply the database schema and seed a Super Admin:
 
 ```bash
-npm run migrate          # or: npm run apply-schema
-npm run setup-admin
+npm run apply-schema     # runs every file in supabase/migrations/, in order
+npm run setup-admin      # idempotent: creates southgold@gmail.com if it doesn't exist
 ```
+
+`npm run migrate` is a separate, one-time script for migrating data out of the old `db.json` flat-file store (from before the Supabase migration) into Postgres — irrelevant on a fresh setup, since there is no `db.json` to migrate from.
 
 Run locally:
 

@@ -7,7 +7,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "clean": "rm -rf .next dist server.js",
+    "clean": "rm -rf .next",
     "lint": "tsc --noEmit",
     "apply-schema": "tsx scripts/apply-schema.ts",
     "migrate": "tsx scripts/migrate.ts",
@@ -15,33 +15,25 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.4",
-    "@tailwindcss/vite": "^4.1.14",
-    "@vitejs/plugin-react": "^5.0.4",
     "dotenv": "^17.2.3",
-    "express": "^4.21.2",
     "lucide-react": "^0.546.0",
-    "motion": "^12.23.24",
     "next": "^14.2.15",
     "nodemailer": "^8.0.9",
     "pg": "^8.22.0",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "vite": "^6.2.3"
+    "react-dom": "^18.3.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.14",
-    "@types/express": "^4.17.21",
     "@types/node": "^22.14.0",
     "@types/nodemailer": "^8.0.0",
     "@types/pg": "^8.20.0",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "autoprefixer": "^10.4.21",
-    "esbuild": "^0.25.0",
     "postcss": "^8.4.49",
     "tailwindcss": "^4.1.14",
     "tsx": "^4.21.0",
-    "typescript": "~5.8.2",
-    "vite": "^6.2.3"
+    "typescript": "~5.8.2"
   }
 }
