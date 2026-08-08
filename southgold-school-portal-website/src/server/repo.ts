@@ -1142,6 +1142,19 @@ export const CMS = {
     const { error } = await supabase.from('cms_content').upsert({ id: 'landing_cms', content: mergedContent });
     if (error) throw error;
     return mergedContent;
+  },
+  // Real last-modified time for the CMS content, for the sitemap's
+  // <lastmod>. Falls back to null if migration 0014 (which adds this
+  // column) hasn't been applied yet -- callers should fall back to
+  // something reasonable (e.g. the current time) in that case.
+  getLastModified: async (): Promise<Date | null> => {
+    try {
+      const { data, error } = await supabase.from('cms_content').select('updated_at').eq('id', 'landing_cms').maybeSingle();
+      if (error || !data?.updated_at) return null;
+      return new Date(data.updated_at);
+    } catch {
+      return null;
+    }
   }
 };
 
