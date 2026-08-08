@@ -29,6 +29,7 @@ import {
   Building
 } from 'lucide-react';
 import { UserRole, SchoolActivity } from '../types';
+import { PUBLIC_ROUTES } from '../publicRoutes';
 
 interface LandingPageProps {
   onLogin: (email: string, password: string, expectedRole?: UserRole, rememberMe?: boolean) => Promise<void>;
@@ -123,15 +124,7 @@ export default function LandingPage({
       .catch(err => console.error('Error fetching CMS:', err));
   }, []);
 
-  const validPaths = React.useMemo(() => new Set([
-    '/',
-    '/login',
-    '/login/super-admin',
-    '/login/staff-admin',
-    '/login/teacher',
-    '/login/parent',
-    '/login/student',
-  ]), []);
+  const validPaths = React.useMemo(() => new Set(PUBLIC_ROUTES.map(r => r.path)), []);
 
   const resolvePathFromLocation = React.useCallback((location: Location) => {
     const redirectPath = new URLSearchParams(location.search).get('redirect');
