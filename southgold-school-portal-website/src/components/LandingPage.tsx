@@ -65,7 +65,7 @@ export default function LandingPage({
     facebook: 'https://facebook.com',
     instagram: 'https://instagram.com',
     youtube: 'https://youtube.com',
-    website: 'https://southgoldschools.com',
+    website: 'https://southgoldschools.com.ng',
     welcomeTitle: 'Welcome to SouthGold Montessori School',
     welcomeDesc: 'We provide a warm, nurturing environment where every child can flourish academically, socially, and emotionally.',
     aboutTitle: 'Our Heritage of Excellence',
