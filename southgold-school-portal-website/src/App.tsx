@@ -38,7 +38,7 @@ import MyProfile from './components/MyProfile';
 import ParentStudentAttendanceViewer from './components/ParentStudentAttendanceViewer';
 import { EarlyYearsResultRecord } from './components/EarlyYearsResultEditor';
 
-export default function App() {
+export default function App({ initialCms }: { initialCms?: any }) {
    
   // 1. Core State variables initialized empty, loaded from backend API
   const [students, setStudents] = useState<Student[]>([]);
@@ -882,7 +882,7 @@ export default function App() {
   if (!isLoggedIn) {
     return (
       <div className={darkTheme ? 'dark' : ''}>
-        <LandingPage 
+        <LandingPage
           onLogin={handleLogin}
           darkTheme={darkTheme}
           onToggleTheme={handleToggleTheme}
@@ -893,6 +893,7 @@ export default function App() {
           schoolPhone={config?.schoolPhone}
           schoolAddress={config?.schoolAddress}
           globalLoginError={globalLoginError}
+          initialCms={initialCms}
         />
       </div>
     );

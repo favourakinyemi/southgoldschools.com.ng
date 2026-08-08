@@ -42,25 +42,31 @@ interface LandingPageProps {
   schoolPhone?: string;
   schoolAddress?: string;
   globalLoginError?: string | null;
+  initialCms?: any;
 }
 
-export default function LandingPage({ 
-  onLogin, 
-  darkTheme, 
-  onToggleTheme, 
-  activities, 
-  logoUrl, 
-  schoolName, 
+export default function LandingPage({
+  onLogin,
+  darkTheme,
+  onToggleTheme,
+  activities,
+  logoUrl,
+  schoolName,
   schoolEmail,
   schoolPhone,
   schoolAddress,
-  globalLoginError
+  globalLoginError,
+  initialCms
 }: LandingPageProps) {
   const [selectedActivity, setSelectedActivity] = useState<SchoolActivity | null>(null);
   const [selectedBulletin, setSelectedBulletin] = useState<{ kind: 'news' | 'announcement'; date: string; title: string; content: string; image?: string } | null>(null);
   const [selectedGalleryIndex, setSelectedGalleryIndex] = useState<number | null>(null);
 
-  const [cms, setCms] = useState<any>({
+  // Seeded from the server-fetched initialCms when available (the normal
+  // case) so the first paint already shows real content -- these hardcoded
+  // values are only a fallback for if that server fetch failed, not what
+  // gets shown in the common case.
+  const [cms, setCms] = useState<any>(() => initialCms ?? {
     motto: 'Learn and Grow Together.',
     whatsapp: '+234 803 123 4567',
     facebook: 'https://facebook.com',
