@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { PUBLIC_ROUTES } from '../publicRoutes';
 import { SchoolActivity, UserRole } from '../types';
+import { HOMEPAGE_IMAGE_DEFAULTS } from '../data/cmsDefaults';
 
 interface LandingPageProps {
   onLogin: (email: string, password: string, expectedRole?: UserRole, rememberMe?: boolean) => Promise<void>;
@@ -76,6 +77,7 @@ const fallbackCms = {
   principalPhoto: '',
   heroImages: [],
   gallery: [],
+  ...HOMEPAGE_IMAGE_DEFAULTS,
   admissionsTitle: 'Admissions are open',
   admissionsDesc:
     'We welcome enquiries from parents who want a warm, structured, and ambitious school environment for their children.',
@@ -345,7 +347,17 @@ export default function LandingPage({
   const programmeGroups = useMemo(() => buildProgrammeGroups(classes), [classes]);
   const programmeOptions = useMemo(() => programmeGroups.flatMap((group) => group.classes), [programmeGroups]);
   const heroPhoto = getSchoolPhoto(cms, 0);
-  const welcomePhoto = getSchoolPhoto(cms, 1);
+  const welcomePhoto = cms.welcomeImage || fallbackCms.welcomeImage;
+  const academicStageImages = [
+    cms.earlyYearsImage || fallbackCms.earlyYearsImage,
+    cms.primarySchoolImage || fallbackCms.primarySchoolImage,
+    cms.secondarySchoolImage || fallbackCms.secondarySchoolImage,
+  ];
+  const academicStageAltText = [
+    'Early Years and Montessori learning at SouthGold Schools',
+    'Primary School learning at SouthGold Schools',
+    'SouthGold Schools secondary school campus',
+  ];
 
   useEffect(() => {
     fetch('/api/cms')
@@ -632,7 +644,7 @@ export default function LandingPage({
         <div className={`mx-auto grid max-w-7xl gap-10 px-4 sm:px-6 lg:px-8 ${welcomePhoto ? 'lg:grid-cols-[0.95fr_1.05fr]' : ''}`}>
           {welcomePhoto && (
             <div className="min-h-[420px] overflow-hidden lg:-mt-28">
-              <EditorialImage src={welcomePhoto} alt={imageAlt(displayName, 'School welcome')} label="Add a real welcome, classroom, or campus image." tall />
+              <EditorialImage src={welcomePhoto} alt="SouthGold Schools learning environment" tall />
             </div>
           )}
           <div className="flex flex-col justify-center">
@@ -652,7 +664,7 @@ export default function LandingPage({
           <div className="mt-10 grid gap-6 lg:grid-cols-3">
             {stageSummaries.map((stage, index) => (
               <article key={stage.title} className="bg-white">
-                <div className="aspect-[4/3] overflow-hidden"><EditorialImage src={getSchoolPhoto(cms, index + 4)} alt={imageAlt(displayName, stage.title)} label={`Replace with a real ${stage.title} photograph.`} /></div>
+                <div className="aspect-[4/3] overflow-hidden"><EditorialImage src={academicStageImages[index]} alt={academicStageAltText[index]} /></div>
                 <div className="p-6">
                   <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#9f7622]">{stage.kicker}</p>
                   <h3 className="mt-3 text-xl font-extrabold text-[#07172f]">{stage.title}</h3>

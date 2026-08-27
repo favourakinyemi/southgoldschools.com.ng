@@ -2,6 +2,7 @@ import { supabase } from './db';
 import { ensureAppUserExists, onboardStudent } from './auth';
 import fs from 'fs';
 import path from 'path';
+import { HOMEPAGE_IMAGE_DEFAULTS } from '../data/cmsDefaults';
 
 // ============================================================================
 // Row <-> Frontend shape mappers
@@ -1087,6 +1088,10 @@ export const CMS = {
           principalPhoto: data.content.principalPhoto ?? '',
           heroImages: data.content.heroImages ?? [],
           gallery: data.content.gallery ?? [],
+          welcomeImage: data.content.welcomeImage || HOMEPAGE_IMAGE_DEFAULTS.welcomeImage,
+          earlyYearsImage: data.content.earlyYearsImage || HOMEPAGE_IMAGE_DEFAULTS.earlyYearsImage,
+          primarySchoolImage: data.content.primarySchoolImage || HOMEPAGE_IMAGE_DEFAULTS.primarySchoolImage,
+          secondarySchoolImage: data.content.secondarySchoolImage || HOMEPAGE_IMAGE_DEFAULTS.secondarySchoolImage,
           admissionsTitle: data.content.admissionsTitle ?? 'Admissions Open for 2026/2027 Session',
           admissionsDesc: data.content.admissionsDesc ?? 'We are currently accepting applications for Preschool, Primary, and Junior Secondary classes. Reach out to our admissions desk to learn more.',
           news: data.content.news ?? [
@@ -1119,6 +1124,7 @@ export const CMS = {
       principalPhoto: '',
       heroImages: [],
       gallery: [],
+      ...HOMEPAGE_IMAGE_DEFAULTS,
       admissionsTitle: 'Admissions Open for 2026/2027 Session',
       admissionsDesc: 'We are currently accepting applications for Preschool, Primary, and Junior Secondary classes. Reach out to our admissions desk to learn more.',
       news: [

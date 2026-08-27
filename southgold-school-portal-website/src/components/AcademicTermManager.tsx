@@ -19,6 +19,7 @@ import {
   Globe
 } from 'lucide-react';
 import { AcademicSession, SchoolTerm, Student } from '../types';
+import { HOMEPAGE_IMAGE_DEFAULTS } from '../data/cmsDefaults';
 
 interface AcademicTermManagerProps {
   sessions: AcademicSession[];
@@ -98,6 +99,7 @@ export default function AcademicTermManager({
     principalPhoto: '',
     heroImages: [],
     gallery: [],
+    ...HOMEPAGE_IMAGE_DEFAULTS,
     admissionsTitle: '',
     admissionsDesc: '',
     news: [],
@@ -154,7 +156,10 @@ export default function AcademicTermManager({
     }
   };
 
-  const handleCmsImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, targetField: 'principalPhoto' | 'heroImages' | 'gallery') => {
+  const handleCmsImageUpload = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+    targetField: 'principalPhoto' | 'heroImages' | 'gallery' | keyof typeof HOMEPAGE_IMAGE_DEFAULTS
+  ) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -174,12 +179,12 @@ export default function AcademicTermManager({
         });
         const data = await res.json();
         if (data.success && data.publicUrl) {
-          if (targetField === 'principalPhoto') {
-            setCms((prev: any) => ({ ...prev, principalPhoto: data.publicUrl }));
-          } else if (targetField === 'heroImages') {
+          if (targetField === 'heroImages') {
             setCms((prev: any) => ({ ...prev, heroImages: [...(prev.heroImages || []), data.publicUrl] }));
           } else if (targetField === 'gallery') {
             setCms((prev: any) => ({ ...prev, gallery: [...(prev.gallery || []), data.publicUrl] }));
+          } else {
+            setCms((prev: any) => ({ ...prev, [targetField]: data.publicUrl }));
           }
           showNotice('CMS image uploaded successfully. Click "Save All CMS Configurations" to publish it.');
         } else {
@@ -1099,9 +1104,46 @@ export default function AcademicTermManager({
                   </div>
                 </div>
 
-                {/* 4. Hero Slider & Campus Gallery Images */}
+                {/* 4. Homepage Section Images */}
                 <div className="border border-slate-100 dark:border-slate-800 p-4 rounded-xl space-y-4">
-                  <h4 className="font-extrabold text-xs uppercase tracking-wider text-rose-600">4. Hero & Gallery Media Assets</h4>
+                  <h4 className="font-extrabold text-xs uppercase tracking-wider text-amber-600">4. Homepage Section Images</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {([
+                      ['welcomeImage', 'Homepage Welcome Image'],
+                      ['earlyYearsImage', 'Early Years / Montessori Image'],
+                      ['primarySchoolImage', 'Primary School Image'],
+                      ['secondarySchoolImage', 'Secondary School Image'],
+                    ] as const).map(([field, label]) => (
+                      <div key={field} className="space-y-2">
+                        <label className="text-[9px] uppercase font-bold text-slate-455 block">{label}</label>
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => handleCmsImageUpload(e, field)}
+                            className="hidden"
+                            id={`${field}-upload`}
+                          />
+                          <label
+                            htmlFor={`${field}-upload`}
+                            className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-[10px] py-1.5 px-3 rounded-lg flex items-center gap-1 cursor-pointer border border-slate-200 dark:border-slate-700"
+                          >
+                            <Upload size={11} /> Replace Image
+                          </label>
+                          {cms[field] ? (
+                            <img src={cms[field]} alt={`${label} preview`} className="h-12 w-16 object-cover rounded border border-amber-500" />
+                          ) : (
+                            <span className="text-[10px] text-slate-400">No image selected</span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 5. Hero Slider & Campus Gallery Images */}
+                <div className="border border-slate-100 dark:border-slate-800 p-4 rounded-xl space-y-4">
+                  <h4 className="font-extrabold text-xs uppercase tracking-wider text-rose-600">5. Hero & Gallery Media Assets</h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {/* Hero Images list */}
                     <div className="space-y-2">
@@ -1181,9 +1223,9 @@ export default function AcademicTermManager({
                   </div>
                 </div>
 
-                {/* 5. Social & Contact Links */}
+                {/* 6. Social & Contact Links */}
                 <div className="border border-slate-100 dark:border-slate-800 p-4 rounded-xl space-y-4">
-                  <h4 className="font-extrabold text-xs uppercase tracking-wider text-emerald-600">5. Social Media & Communication Channels</h4>
+                  <h4 className="font-extrabold text-xs uppercase tracking-wider text-emerald-600">6. Social Media & Communication Channels</h4>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
                       <label className="text-[9px] uppercase font-bold text-slate-455 block mb-1">WhatsApp Registrar Number</label>
@@ -1238,9 +1280,9 @@ export default function AcademicTermManager({
                   </div>
                 </div>
 
-                {/* 6. Dynamic News Panel */}
+                {/* 7. Dynamic News Panel */}
                 <div className="border border-slate-100 dark:border-slate-800 p-4 rounded-xl space-y-4">
-                  <h4 className="font-extrabold text-xs uppercase tracking-wider text-amber-500">6. Latest School News Articles</h4>
+                  <h4 className="font-extrabold text-xs uppercase tracking-wider text-amber-500">7. Latest School News Articles</h4>
                   
                   {/* Create News Item */}
                   <div className="bg-slate-50 dark:bg-slate-955 p-3 rounded-lg border dark:border-slate-800 space-y-2">
@@ -1337,9 +1379,9 @@ export default function AcademicTermManager({
                   </div>
                 </div>
 
-                {/* 7. Announcements Panel */}
+                {/* 8. Announcements Panel */}
                 <div className="border border-slate-100 dark:border-slate-800 p-4 rounded-xl space-y-4">
-                  <h4 className="font-extrabold text-xs uppercase tracking-wider text-blue-500">7. Important Announcements</h4>
+                  <h4 className="font-extrabold text-xs uppercase tracking-wider text-blue-500">8. Important Announcements</h4>
                   
                   {/* Create Announcement */}
                   <div className="bg-slate-50 dark:bg-slate-955 p-3 rounded-lg border dark:border-slate-800 space-y-2">
