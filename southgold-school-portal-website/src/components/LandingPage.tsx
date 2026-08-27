@@ -145,6 +145,13 @@ const admissionSteps = [
   'Enrollment',
 ];
 
+const requiredProgrammeGroups = [
+  { title: 'Pre-School', classes: ['Toddler', 'Preschool 1', 'Preschool 2', 'Reception'] },
+  { title: 'Primary School', classes: ['Year 1', 'Year 2', 'Year 3', 'Year 4', 'Year 5'] },
+  { title: 'Junior Secondary School', classes: ['JSS 1', 'JSS 2', 'JSS 3'] },
+  { title: 'Senior Secondary School', classes: ['SS 1', 'SS 2', 'SS 3'] },
+];
+
 const syntheticBulletinTitles = new Set([
   'Inter-House Sports Festival 2026',
   'STEAM Exhibition Day',
@@ -163,6 +170,72 @@ function getImage(cms: any, index = 0) {
     ...(Array.isArray(cms.gallery) ? cms.gallery : []),
   ].filter(Boolean);
   return images[index % Math.max(images.length, 1)] || '';
+}
+
+function isSuitableSchoolPhoto(src?: string) {
+  if (!src) return false;
+  const lowered = src.toLowerCase();
+  return !['summer', 'banner', 'flyer', 'chatgpt', 'promo', 'promotion'].some((term) => lowered.includes(term));
+}
+
+function getSchoolPhoto(cms: any, index = 0) {
+  const images = [
+    ...(Array.isArray(cms.heroImages) ? cms.heroImages : []),
+    ...(Array.isArray(cms.gallery) ? cms.gallery : []),
+    cms.principalPhoto,
+  ].filter(isSuitableSchoolPhoto);
+  return images[index % Math.max(images.length, 1)] || '';
+}
+
+function classifyProgramme(classId: string) {
+  const value = classId.trim().toLowerCase().replace(/\s+/g, ' ');
+  if (['toddler', 'preschool 1', 'preschool 2', 'reception'].includes(value)) return 'Pre-School';
+  if (/^year\s*[1-5]$/.test(value)) return 'Primary School';
+  if (/^jss\s*[1-3]$/.test(value)) return 'Junior Secondary School';
+  if (/^ss\s*[1-3]$/.test(value)) return 'Senior Secondary School';
+  if (value.includes('preschool') || value.includes('pre-school') || value.includes('reception') || value.includes('toddler')) return 'Pre-School';
+  if (value.includes('jss')) return 'Junior Secondary School';
+  if (value.includes('ss')) return 'Senior Secondary School';
+  return 'Primary School';
+}
+
+function buildProgrammeGroups(classes: { classId: string; stage?: string }[]) {
+  const groups = requiredProgrammeGroups.map((group) => ({ ...group, classes: [...group.classes] }));
+  const seen = new Set(groups.flatMap((group) => group.classes.map((classId) => classId.toLowerCase())));
+
+  classes.forEach((item) => {
+    const classId = item.classId?.trim();
+    if (!classId || seen.has(classId.toLowerCase())) return;
+    const groupTitle = classifyProgramme(classId);
+    const group = groups.find((entry) => entry.title === groupTitle);
+    if (group) {
+      group.classes.push(classId);
+      seen.add(classId.toLowerCase());
+    }
+  });
+
+  return groups;
+}
+
+function buildWhatsAppMessage(formState: EnquiryFormState) {
+  return [
+    'Hello SouthGold Schools,',
+    '',
+    'I would like to make an admission enquiry.',
+    '',
+    `Parent / Guardian Name: ${formState.parentName}`,
+    `Phone: ${formState.phone}`,
+    `Email: ${formState.email}`,
+    `Child's Name: ${formState.childName}`,
+    `Child's Age: ${formState.childAge}`,
+    `Class Interested In: ${formState.classApplyingFor}`,
+    `Preferred Contact Method: ${formState.preferredContact}`,
+    '',
+    'Message:',
+    formState.message || 'No additional message supplied.',
+    '',
+    'Thank you.',
+  ].join('\n');
 }
 
 function imageAlt(schoolName: string, label: string) {
@@ -266,6 +339,7 @@ export default function LandingPage({
   const [formError, setFormError] = useState<string | null>(null);
   const [contactSubmitted, setContactSubmitted] = useState(false);
   const [contactLoading, setContactLoading] = useState(false);
+  const [whatsappFallbackMessage, setWhatsappFallbackMessage] = useState<string | null>(null);
 
   const validPaths = useMemo(() => new Set(PUBLIC_ROUTES.map((route) => route.path)), []);
   const resolvePathFromLocation = useCallback((location: Location) => {
@@ -287,6 +361,10 @@ export default function LandingPage({
   const recentNews = [...(cms.news || []), ...(cms.announcements || [])]
     .filter((item) => item && !syntheticBulletinTitles.has(item.title))
     .slice(0, 3);
+  const programmeGroups = useMemo(() => buildProgrammeGroups(classes), [classes]);
+  const programmeOptions = useMemo(() => programmeGroups.flatMap((group) => group.classes), [programmeGroups]);
+  const heroPhoto = getSchoolPhoto(cms, 0);
+  const welcomePhoto = getSchoolPhoto(cms, 1);
 
   useEffect(() => {
     fetch('/api/cms')
@@ -355,7 +433,9 @@ export default function LandingPage({
     }
 
     setFormError(null);
+    setWhatsappFallbackMessage(null);
     setContactLoading(true);
+    const whatsappWindow = window.open('', '_blank');
 
     const message = [
       `Parent/Guardian: ${formState.parentName}`,
@@ -401,6 +481,13 @@ export default function LandingPage({
         body: JSON.stringify(notificationPayloads),
       });
 
+      const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(buildWhatsAppMessage(formState))}`;
+      if (whatsappWindow) {
+        whatsappWindow.location.href = whatsappUrl;
+      } else {
+        setWhatsappFallbackMessage(`Your enquiry was received, but WhatsApp did not open automatically. Please message ${cms.whatsapp || displayPhone}.`);
+      }
+
       setContactSubmitted(true);
       setFormState({
         parentName: '',
@@ -413,6 +500,7 @@ export default function LandingPage({
         message: '',
       });
     } catch (err: any) {
+      if (whatsappWindow) whatsappWindow.close();
       setFormError(err.message || 'The enquiry could not be sent. Please try again.');
     } finally {
       setContactLoading(false);
@@ -540,8 +628,8 @@ export default function LandingPage({
   const HomePage = () => (
     <>
       <section className="relative flex min-h-[82vh] items-end overflow-hidden bg-[#07172f] text-white sm:min-h-[88vh]">
-        {getImage(cms, 0) ? (
-          <img src={getImage(cms, 0)} alt={imageAlt(displayName, 'Students learning')} className="absolute inset-0 h-full w-full object-cover" referrerPolicy="no-referrer" />
+        {heroPhoto ? (
+          <img src={heroPhoto} alt={imageAlt(displayName, 'Students learning')} className="absolute inset-0 h-full w-full object-cover" referrerPolicy="no-referrer" />
         ) : (
           <div className="absolute inset-0 bg-[linear-gradient(135deg,#07172f_0%,#10294e_55%,#c99a2e_140%)]" role="img" aria-label={imageAlt(displayName, 'Hero image placeholder')} />
         )}
@@ -549,8 +637,7 @@ export default function LandingPage({
         <div className="absolute inset-x-0 bottom-0 h-44 bg-gradient-to-t from-[#07172f] to-transparent" />
         <div className="relative mx-auto w-full max-w-7xl px-4 pb-16 pt-32 sm:px-6 sm:pb-20 lg:px-8">
           <div className="max-w-3xl">
-            <p className="text-xs font-bold uppercase tracking-[0.24em] text-amber-200">{cms.motto || fallbackCms.motto}</p>
-            <h1 className="mt-5 text-4xl font-extrabold leading-tight sm:text-6xl lg:text-7xl">Nurturing Excellence.<br />Building Tomorrow's Leaders.</h1>
+            <h1 className="max-w-4xl text-4xl font-extrabold leading-[1.08] sm:text-6xl lg:text-7xl">Nurturing Excellence. Building Tomorrow's Leaders.</h1>
             <p className="mt-6 max-w-2xl text-base leading-8 text-white/85 sm:text-lg">{cms.welcomeDesc || fallbackCms.welcomeDesc}</p>
             <div className="mt-9 flex flex-col gap-3 sm:flex-row">
               <button onClick={() => handleNavigate('/admissions')} className="bg-[#c99a2e] px-6 py-3 text-sm font-bold text-[#07172f] transition hover:bg-[#d8aa3f]">Apply for Admission</button>
@@ -561,13 +648,14 @@ export default function LandingPage({
       </section>
 
       <section className="bg-white py-16 dark:bg-slate-950">
-        <div className="mx-auto grid max-w-7xl gap-10 px-4 sm:px-6 lg:grid-cols-[0.95fr_1.05fr] lg:px-8">
-          <div className="min-h-[420px] overflow-hidden lg:-mt-28">
-            <EditorialImage src={getImage(cms, 1)} alt={imageAlt(displayName, 'School welcome')} label="Add a real welcome, classroom, or campus image." tall />
-          </div>
+        <div className={`mx-auto grid max-w-7xl gap-10 px-4 sm:px-6 lg:px-8 ${welcomePhoto ? 'lg:grid-cols-[0.95fr_1.05fr]' : ''}`}>
+          {welcomePhoto && (
+            <div className="min-h-[420px] overflow-hidden lg:-mt-28">
+              <EditorialImage src={welcomePhoto} alt={imageAlt(displayName, 'School welcome')} label="Add a real welcome, classroom, or campus image." tall />
+            </div>
+          )}
           <div className="flex flex-col justify-center">
-            <p className="text-xs font-bold uppercase tracking-[0.22em] text-[#9f7622]">SouthGold Schools</p>
-            <h2 className="mt-4 text-3xl font-extrabold text-[#07172f] dark:text-white">{cms.welcomeTitle || fallbackCms.welcomeTitle}</h2>
+            <h2 className="text-3xl font-extrabold text-[#07172f] dark:text-white">Welcome to SouthGold Schools</h2>
             <p className="mt-6 text-base leading-8 text-slate-700 dark:text-slate-300">{cms.aboutDesc || fallbackCms.aboutDesc}</p>
             <button onClick={() => handleNavigate('/about')} className="mt-7 w-fit border-b-2 border-[#c99a2e] pb-1 text-sm font-bold text-[#07172f] dark:text-white">Read About SouthGold</button>
           </div>
@@ -583,7 +671,7 @@ export default function LandingPage({
           <div className="mt-10 grid gap-6 lg:grid-cols-3">
             {stageSummaries.map((stage, index) => (
               <article key={stage.title} className="bg-white">
-                <div className="aspect-[4/3] overflow-hidden"><EditorialImage src={getImage(cms, index + 1)} alt={imageAlt(displayName, stage.title)} label={`Replace with a real ${stage.title} photograph.`} /></div>
+                <div className="aspect-[4/3] overflow-hidden"><EditorialImage src={getSchoolPhoto(cms, index + 4)} alt={imageAlt(displayName, stage.title)} label={`Replace with a real ${stage.title} photograph.`} /></div>
                 <div className="p-6">
                   <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#9f7622]">{stage.kicker}</p>
                   <h3 className="mt-3 text-xl font-extrabold text-[#07172f]">{stage.title}</h3>
@@ -615,7 +703,7 @@ export default function LandingPage({
 
       <section className="bg-[#07172f] py-16 text-white">
         <div className="mx-auto grid max-w-7xl gap-10 px-4 sm:px-6 lg:grid-cols-2 lg:px-8">
-          <div className="overflow-hidden"><EditorialImage src={getImage(cms, 4)} alt={imageAlt(displayName, 'School activities')} label="Use a real image of ICT, science, art, sports, or school activities." /></div>
+          <div className="overflow-hidden"><EditorialImage src={getSchoolPhoto(cms, 7)} alt={imageAlt(displayName, 'School activities')} label="Use a real image of ICT, science, art, sports, or school activities." /></div>
           <div className="flex flex-col justify-center">
             <p className="text-xs font-bold uppercase tracking-[0.22em] text-amber-300">Learning Experience</p>
             <h2 className="mt-4 text-3xl font-extrabold">Lessons that connect knowledge with character</h2>
@@ -650,7 +738,7 @@ export default function LandingPage({
             <div className="mt-10 grid gap-6 lg:grid-cols-3">
               {(activities.length ? activities.slice(0, 3) : recentNews).map((item: any, index: number) => (
                 <article key={item.id || item.title} className="bg-white">
-                  <div className="aspect-[4/3] overflow-hidden"><EditorialImage src={item.imgUrl || item.image || getImage(cms, index + 5)} alt={imageAlt(displayName, item.title)} label="Activity image placeholder." /></div>
+                  <div className="aspect-[4/3] overflow-hidden"><EditorialImage src={isSuitableSchoolPhoto(item.imgUrl || item.image) ? item.imgUrl || item.image : getSchoolPhoto(cms, index + 8)} alt={imageAlt(displayName, item.title)} label="Activity image placeholder." /></div>
                   <div className="p-6">
                     <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#9f7622]">{item.badge || item.date || 'School Update'}</p>
                     <h3 className="mt-3 text-lg font-extrabold text-[#07172f]">{item.title}</h3>
@@ -681,8 +769,8 @@ export default function LandingPage({
   const AboutPage = () => (
     <>
       <section className="relative flex min-h-[58vh] items-end overflow-hidden bg-[#07172f] text-white">
-        {getImage(cms, 1) ? (
-          <img src={getImage(cms, 1)} alt={imageAlt(displayName, 'School community')} className="absolute inset-0 h-full w-full object-cover" referrerPolicy="no-referrer" />
+        {getSchoolPhoto(cms, 2) ? (
+          <img src={getSchoolPhoto(cms, 2)} alt={imageAlt(displayName, 'School community')} className="absolute inset-0 h-full w-full object-cover" referrerPolicy="no-referrer" />
         ) : (
           <div className="absolute inset-0 bg-[linear-gradient(135deg,#07172f_0%,#10294e_65%,#c99a2e_145%)]" role="img" aria-label={imageAlt(displayName, 'About page image placeholder')} />
         )}
@@ -734,7 +822,7 @@ export default function LandingPage({
       </section>
       <section className="bg-white py-16 dark:bg-slate-950">
         <div className="mx-auto grid max-w-7xl gap-10 px-4 sm:px-6 lg:grid-cols-2 lg:px-8">
-          <div className="overflow-hidden"><EditorialImage src={getImage(cms, 3)} alt={imageAlt(displayName, 'Beyond academics')} label="Use a real school activity or facilities image." /></div>
+          <div className="overflow-hidden"><EditorialImage src={getSchoolPhoto(cms, 5)} alt={imageAlt(displayName, 'Beyond academics')} label="Use a real school activity or facilities image." /></div>
           <div className="flex flex-col justify-center"><p className="text-xs font-bold uppercase tracking-[0.22em] text-[#9f7622]">Beyond Academics</p><h2 className="mt-4 text-3xl font-extrabold text-[#07172f] dark:text-white">Room for creativity, leadership, and discovery</h2><p className="mt-5 text-base leading-8 text-slate-700 dark:text-slate-300">The site reflects confirmed school activities such as sports, creative arts, events, practical learning, and excursions when these are supplied through the activities manager or CMS gallery.</p></div>
         </div>
       </section>
@@ -744,8 +832,8 @@ export default function LandingPage({
   const AdmissionsPage = () => (
     <>
       <section className="relative flex min-h-[62vh] items-end overflow-hidden bg-[#07172f] text-white">
-        {getImage(cms, 2) ? (
-          <img src={getImage(cms, 2)} alt={imageAlt(displayName, 'Admissions')} className="absolute inset-0 h-full w-full object-cover" referrerPolicy="no-referrer" />
+        {getSchoolPhoto(cms, 3) ? (
+          <img src={getSchoolPhoto(cms, 3)} alt={imageAlt(displayName, 'Admissions')} className="absolute inset-0 h-full w-full object-cover" referrerPolicy="no-referrer" />
         ) : (
           <div className="absolute inset-0 bg-[linear-gradient(135deg,#07172f_0%,#10294e_65%,#c99a2e_145%)]" role="img" aria-label={imageAlt(displayName, 'Admissions image placeholder')} />
         )}
@@ -768,9 +856,16 @@ export default function LandingPage({
       </section>
       <section className="bg-[#f7f4ed] py-16">
         <div className="mx-auto grid max-w-7xl gap-10 px-4 sm:px-6 lg:grid-cols-[0.75fr_1fr] lg:px-8">
-          <div><p className="text-xs font-bold uppercase tracking-[0.22em] text-[#9f7622]">Classes / Programmes</p><h2 className="mt-4 text-3xl font-extrabold text-[#07172f]">Available programmes</h2><p className="mt-5 leading-8 text-slate-700">Class lists are maintained from the school portal when available.</p></div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            {(classes.length ? classes : stageSummaries.map((stage) => ({ classId: stage.title, stage: undefined }))).map((item) => <div key={item.classId} className="bg-white p-5"><p className="font-bold text-[#07172f]">{item.classId}</p>{item.stage && <p className="mt-1 text-sm text-slate-600">{item.stage}</p>}</div>)}
+          <div><p className="text-xs font-bold uppercase tracking-[0.22em] text-[#9f7622]">Classes / Programmes</p><h2 className="mt-4 text-3xl font-extrabold text-[#07172f]">Available programmes</h2><p className="mt-5 leading-8 text-slate-700">Classes are grouped for parents using the school structure, with portal/database classes merged into the correct category where available.</p></div>
+          <div className="space-y-5">
+            {programmeGroups.map((group) => (
+              <section key={group.title} className="border-l-4 border-[#c99a2e] bg-white p-5">
+                <h3 className="text-lg font-extrabold text-[#07172f]">{group.title}</h3>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {group.classes.map((classId) => <span key={classId} className="border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700">{classId}</span>)}
+                </div>
+              </section>
+            ))}
           </div>
         </div>
       </section>
@@ -792,6 +887,7 @@ export default function LandingPage({
                 <div className="mx-auto flex h-12 w-12 items-center justify-center bg-emerald-100 text-emerald-700"><Check size={22} /></div>
                 <h3 className="mt-5 text-xl font-extrabold text-[#07172f] dark:text-white">Thank you. Your enquiry has been received.</h3>
                 <p className="mx-auto mt-3 max-w-md text-sm leading-7 text-slate-600 dark:text-slate-300">The admissions team can now follow up from the school portal.</p>
+                {whatsappFallbackMessage && <p className="mx-auto mt-4 max-w-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold leading-6 text-amber-800">{whatsappFallbackMessage}</p>}
                 <button onClick={() => setContactSubmitted(false)} className="mt-6 border border-[#07172f] px-5 py-3 text-sm font-bold text-[#07172f] dark:border-white dark:text-white">Send another enquiry</button>
               </div>
             ) : (
@@ -806,7 +902,7 @@ export default function LandingPage({
                   <div>
                     <label className="mb-2 block text-xs font-bold uppercase tracking-[0.16em] text-slate-600 dark:text-slate-300">Class Applying For *</label>
                     <input list="class-options" required value={formState.classApplyingFor} onChange={(e) => updateForm('classApplyingFor', e.target.value)} className="w-full border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-[#c99a2e] focus:ring-2 focus:ring-[#c99a2e]/20 dark:border-slate-700 dark:bg-slate-900 dark:text-white" />
-                    <datalist id="class-options">{(classes.length ? classes.map((item) => item.classId) : stageSummaries.map((stage) => stage.title)).map((item) => <option key={item} value={item} />)}</datalist>
+                    <datalist id="class-options">{programmeOptions.map((item) => <option key={item} value={item} />)}</datalist>
                   </div>
                   <div>
                     <label className="mb-2 block text-xs font-bold uppercase tracking-[0.16em] text-slate-600 dark:text-slate-300">Preferred Contact Method</label>
