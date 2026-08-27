@@ -19,7 +19,7 @@ export async function GET(request: Request) {
       .eq('id', 'global')
       .maybeSingle(),
     supabase.auth.admin.listUsers({ page: 1, perPage: 1 }),
-    supabase.storage.getBucket('school-assets'),
+    supabase.storage.from('school-assets').list('cms', { limit: 1 }),
   ]);
 
   return NextResponse.json({
@@ -37,8 +37,8 @@ export async function GET(request: Request) {
       storage: {
         ...summarize(storage.error),
         bucket: 'school-assets',
-        exists: Boolean(storage.data),
-        public: storage.data?.public ?? null,
+        checkedPath: 'cms',
+        reachable: !storage.error,
       },
     },
   });
