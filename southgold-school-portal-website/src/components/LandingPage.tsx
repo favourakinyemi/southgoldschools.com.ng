@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ArrowLeft,
   ArrowRight,
@@ -196,7 +196,7 @@ function EditorialImage({ src, alt, label, tall = false }: { src?: string; alt: 
   );
 }
 
-function LogoMark({ logoUrl, schoolName }: { logoUrl?: string; schoolName: string }) {
+function LogoMark({ logoUrl, schoolName, invert = false }: { logoUrl?: string; schoolName: string; invert?: boolean }) {
   return (
     <div className="flex items-center gap-3">
       {logoUrl ? (
@@ -205,8 +205,8 @@ function LogoMark({ logoUrl, schoolName }: { logoUrl?: string; schoolName: strin
         <div className="flex h-10 w-10 items-center justify-center bg-[#c99a2e] text-sm font-black text-[#07172f]">SG</div>
       )}
       <div className="leading-tight">
-        <p className="text-sm font-extrabold uppercase tracking-[0.16em] text-[#07172f] dark:text-white">SouthGold</p>
-        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">Schools</p>
+        <p className={`text-sm font-extrabold uppercase tracking-[0.16em] ${invert ? 'text-white' : 'text-[#07172f] dark:text-white'}`}>SouthGold</p>
+        <p className={`text-[10px] font-semibold uppercase tracking-[0.18em] ${invert ? 'text-white/75' : 'text-slate-500 dark:text-slate-400'}`}>Schools</p>
       </div>
     </div>
   );
@@ -268,14 +268,14 @@ export default function LandingPage({
   const [contactLoading, setContactLoading] = useState(false);
 
   const validPaths = useMemo(() => new Set(PUBLIC_ROUTES.map((route) => route.path)), []);
-  const resolvePathFromLocation = (location: Location) => {
+  const resolvePathFromLocation = useCallback((location: Location) => {
     const redirectPath = new URLSearchParams(location.search).get('redirect');
     if (redirectPath) {
       const safePath = redirectPath.split('?')[0];
       if (validPaths.has(safePath)) return safePath;
     }
     return validPaths.has(location.pathname) ? location.pathname : '/';
-  };
+  }, [validPaths]);
   const [currentPath, setCurrentPath] = useState(() => resolvePathFromLocation(window.location));
 
   const displayName = schoolName || cms.schoolName || DEFAULT_SCHOOL_NAME;
@@ -306,7 +306,7 @@ export default function LandingPage({
     const handlePopState = () => setCurrentPath(resolvePathFromLocation(window.location));
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
-  });
+  }, [resolvePathFromLocation]);
 
   useEffect(() => {
     if (globalLoginError) setLoginError(globalLoginError);
@@ -458,27 +458,27 @@ export default function LandingPage({
   );
 
   const PublicNav = () => (
-    <header className="sticky top-0 z-50 border-b border-slate-200/80 bg-white/95 backdrop-blur dark:border-slate-800 dark:bg-slate-950/95">
+    <header className={`${currentPath === '/' ? 'absolute border-white/15 bg-transparent text-white' : 'sticky border-slate-200/80 bg-white/95 text-slate-900 dark:border-slate-800 dark:bg-slate-950/95 dark:text-white'} top-0 z-50 w-full border-b backdrop-blur`}>
       <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         <button type="button" onClick={() => handleNavigate('/')} className="text-left">
-          <LogoMark logoUrl={logoUrl} schoolName={displayName} />
+          <LogoMark logoUrl={logoUrl} schoolName={displayName} invert={currentPath === '/'} />
         </button>
 
-        <nav className="hidden items-center gap-8 text-sm font-semibold text-slate-700 lg:flex dark:text-slate-200">
+        <nav className={`hidden items-center gap-8 text-sm font-semibold lg:flex ${currentPath === '/' ? 'text-white/90' : 'text-slate-700 dark:text-slate-200'}`}>
           <button onClick={() => handleNavigate('/')} className={currentPath === '/' ? 'text-[#c99a2e]' : 'hover:text-[#c99a2e]'}>Home</button>
           <button onClick={() => handleNavigate('/about')} className={currentPath === '/about' ? 'text-[#c99a2e]' : 'hover:text-[#c99a2e]'}>About & Academics</button>
           <button onClick={() => handleNavigate('/admissions')} className={currentPath === '/admissions' ? 'text-[#c99a2e]' : 'hover:text-[#c99a2e]'}>Admissions</button>
         </nav>
 
         <div className="hidden items-center gap-3 lg:flex">
-          <button type="button" onClick={onToggleTheme} className="flex h-10 w-10 items-center justify-center border border-slate-200 text-slate-700 transition hover:border-[#c99a2e] hover:text-[#c99a2e] dark:border-slate-800 dark:text-slate-200" aria-label="Toggle theme">
+          <button type="button" onClick={onToggleTheme} className={`flex h-10 w-10 items-center justify-center border transition hover:border-[#c99a2e] hover:text-[#c99a2e] ${currentPath === '/' ? 'border-white/30 text-white' : 'border-slate-200 text-slate-700 dark:border-slate-800 dark:text-slate-200'}`} aria-label="Toggle theme">
             {darkTheme ? <Sun size={18} /> : <Moon size={18} />}
           </button>
-          <button onClick={() => handleNavigate('/login')} className="border border-[#07172f] px-4 py-2 text-sm font-bold text-[#07172f] transition hover:bg-[#07172f] hover:text-white dark:border-white dark:text-white">Portal Login</button>
+          <button onClick={() => handleNavigate('/login')} className={`border px-4 py-2 text-sm font-bold transition ${currentPath === '/' ? 'border-white/50 text-white hover:border-[#c99a2e] hover:text-[#c99a2e]' : 'border-[#07172f] text-[#07172f] hover:bg-[#07172f] hover:text-white dark:border-white dark:text-white'}`}>Portal Login</button>
           <button onClick={() => handleNavigate('/admissions')} className="bg-[#c99a2e] px-4 py-2 text-sm font-bold text-[#07172f] transition hover:bg-[#b38928]">Apply / Enquire</button>
         </div>
 
-        <button type="button" onClick={() => setMobileOpen((open) => !open)} className="flex h-10 w-10 items-center justify-center border border-slate-200 text-[#07172f] lg:hidden dark:border-slate-800 dark:text-white" aria-label="Open menu" aria-expanded={mobileOpen}>
+        <button type="button" onClick={() => setMobileOpen((open) => !open)} className={`flex h-10 w-10 items-center justify-center border lg:hidden ${currentPath === '/' ? 'border-white/30 text-white' : 'border-slate-200 text-[#07172f] dark:border-slate-800 dark:text-white'}`} aria-label="Open menu" aria-expanded={mobileOpen}>
           {mobileOpen ? <X size={20} /> : <Menu size={20} />}
         </button>
       </div>
@@ -539,28 +539,38 @@ export default function LandingPage({
 
   const HomePage = () => (
     <>
-      <section className="bg-[#f7f4ed]">
-        <div className="mx-auto grid max-w-7xl gap-10 px-4 py-12 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:px-8 lg:py-16">
-          <div className="flex flex-col justify-center">
-            <p className="text-xs font-bold uppercase tracking-[0.22em] text-[#9f7622]">{cms.motto || fallbackCms.motto}</p>
-            <h1 className="mt-5 max-w-3xl text-4xl font-extrabold leading-tight text-[#07172f] sm:text-5xl lg:text-6xl">Nurturing Excellence. Building Tomorrow's Leaders.</h1>
-            <p className="mt-6 max-w-2xl text-base leading-8 text-slate-700">{cms.welcomeDesc || fallbackCms.welcomeDesc} Our pupils are supported to grow academically, morally, creatively, and digitally.</p>
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <button onClick={() => handleNavigate('/admissions')} className="bg-[#c99a2e] px-6 py-3 text-sm font-bold text-[#07172f] transition hover:bg-[#b38928]">Apply for Admission</button>
-              <button onClick={() => handleNavigate('/about')} className="border border-[#07172f] px-6 py-3 text-sm font-bold text-[#07172f] transition hover:bg-[#07172f] hover:text-white">Discover SouthGold</button>
+      <section className="relative flex min-h-[82vh] items-end overflow-hidden bg-[#07172f] text-white sm:min-h-[88vh]">
+        {getImage(cms, 0) ? (
+          <img src={getImage(cms, 0)} alt={imageAlt(displayName, 'Students learning')} className="absolute inset-0 h-full w-full object-cover" referrerPolicy="no-referrer" />
+        ) : (
+          <div className="absolute inset-0 bg-[linear-gradient(135deg,#07172f_0%,#10294e_55%,#c99a2e_140%)]" role="img" aria-label={imageAlt(displayName, 'Hero image placeholder')} />
+        )}
+        <div className="absolute inset-0 bg-[#07172f]/55" />
+        <div className="absolute inset-x-0 bottom-0 h-44 bg-gradient-to-t from-[#07172f] to-transparent" />
+        <div className="relative mx-auto w-full max-w-7xl px-4 pb-16 pt-32 sm:px-6 sm:pb-20 lg:px-8">
+          <div className="max-w-3xl">
+            <p className="text-xs font-bold uppercase tracking-[0.24em] text-amber-200">{cms.motto || fallbackCms.motto}</p>
+            <h1 className="mt-5 text-4xl font-extrabold leading-tight sm:text-6xl lg:text-7xl">Nurturing Excellence.<br />Building Tomorrow's Leaders.</h1>
+            <p className="mt-6 max-w-2xl text-base leading-8 text-white/85 sm:text-lg">{cms.welcomeDesc || fallbackCms.welcomeDesc}</p>
+            <div className="mt-9 flex flex-col gap-3 sm:flex-row">
+              <button onClick={() => handleNavigate('/admissions')} className="bg-[#c99a2e] px-6 py-3 text-sm font-bold text-[#07172f] transition hover:bg-[#d8aa3f]">Apply for Admission</button>
+              <button onClick={() => handleNavigate('/about')} className="border border-white/70 px-6 py-3 text-sm font-bold text-white transition hover:border-[#c99a2e] hover:text-[#c99a2e]">Explore Our School</button>
             </div>
           </div>
-          <div className="overflow-hidden"><EditorialImage src={getImage(cms, 0)} alt={imageAlt(displayName, 'Students learning')} label="Add a real SouthGold classroom, pupils, or campus photograph from the CMS." tall /></div>
         </div>
       </section>
 
       <section className="bg-white py-16 dark:bg-slate-950">
-        <div className="mx-auto grid max-w-7xl gap-10 px-4 sm:px-6 lg:grid-cols-[0.75fr_1fr] lg:px-8">
-          <div>
+        <div className="mx-auto grid max-w-7xl gap-10 px-4 sm:px-6 lg:grid-cols-[0.95fr_1.05fr] lg:px-8">
+          <div className="min-h-[420px] overflow-hidden lg:-mt-28">
+            <EditorialImage src={getImage(cms, 1)} alt={imageAlt(displayName, 'School welcome')} label="Add a real welcome, classroom, or campus image." tall />
+          </div>
+          <div className="flex flex-col justify-center">
             <p className="text-xs font-bold uppercase tracking-[0.22em] text-[#9f7622]">SouthGold Schools</p>
             <h2 className="mt-4 text-3xl font-extrabold text-[#07172f] dark:text-white">{cms.welcomeTitle || fallbackCms.welcomeTitle}</h2>
+            <p className="mt-6 text-base leading-8 text-slate-700 dark:text-slate-300">{cms.aboutDesc || fallbackCms.aboutDesc}</p>
+            <button onClick={() => handleNavigate('/about')} className="mt-7 w-fit border-b-2 border-[#c99a2e] pb-1 text-sm font-bold text-[#07172f] dark:text-white">Read About SouthGold</button>
           </div>
-          <p className="text-base leading-8 text-slate-700 dark:text-slate-300">{cms.aboutDesc || fallbackCms.aboutDesc}</p>
         </div>
       </section>
 
@@ -670,14 +680,19 @@ export default function LandingPage({
 
   const AboutPage = () => (
     <>
-      <section className="bg-[#07172f] text-white">
-        <div className="mx-auto grid max-w-7xl gap-10 px-4 py-14 sm:px-6 lg:grid-cols-[0.85fr_1.15fr] lg:px-8">
-          <div className="flex flex-col justify-center">
-            <p className="text-xs font-bold uppercase tracking-[0.22em] text-amber-300">About & Academics</p>
-            <h1 className="mt-5 text-4xl font-extrabold leading-tight sm:text-5xl">About SouthGold Schools</h1>
-            <p className="mt-6 text-base leading-8 text-slate-300">{cms.aboutDesc || fallbackCms.aboutDesc}</p>
+      <section className="relative flex min-h-[58vh] items-end overflow-hidden bg-[#07172f] text-white">
+        {getImage(cms, 1) ? (
+          <img src={getImage(cms, 1)} alt={imageAlt(displayName, 'School community')} className="absolute inset-0 h-full w-full object-cover" referrerPolicy="no-referrer" />
+        ) : (
+          <div className="absolute inset-0 bg-[linear-gradient(135deg,#07172f_0%,#10294e_65%,#c99a2e_145%)]" role="img" aria-label={imageAlt(displayName, 'About page image placeholder')} />
+        )}
+        <div className="absolute inset-0 bg-[#07172f]/62" />
+        <div className="relative mx-auto w-full max-w-7xl px-4 pb-14 pt-28 sm:px-6 lg:px-8">
+          <div className="max-w-3xl">
+            <p className="text-xs font-bold uppercase tracking-[0.22em] text-amber-200">About & Academics</p>
+            <h1 className="mt-5 text-4xl font-extrabold leading-tight sm:text-6xl">About SouthGold Schools</h1>
+            <p className="mt-6 text-base leading-8 text-white/85">{cms.aboutDesc || fallbackCms.aboutDesc}</p>
           </div>
-          <div className="overflow-hidden"><EditorialImage src={getImage(cms, 1)} alt={imageAlt(displayName, 'School community')} label="Add a real campus or classroom photograph." /></div>
         </div>
       </section>
       <section className="bg-white py-16 dark:bg-slate-950">
@@ -728,10 +743,19 @@ export default function LandingPage({
 
   const AdmissionsPage = () => (
     <>
-      <section className="bg-[#f7f4ed]">
-        <div className="mx-auto grid max-w-7xl gap-10 px-4 py-14 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:px-8">
-          <div className="flex flex-col justify-center"><p className="text-xs font-bold uppercase tracking-[0.22em] text-[#9f7622]">Admissions & Contact</p><h1 className="mt-5 text-4xl font-extrabold leading-tight text-[#07172f] sm:text-5xl">Begin Your Child's Journey at SouthGold</h1><p className="mt-6 text-base leading-8 text-slate-700">{cms.admissionsDesc || fallbackCms.admissionsDesc}</p></div>
-          <div className="overflow-hidden"><EditorialImage src={getImage(cms, 2)} alt={imageAlt(displayName, 'Admissions')} label="Add a real admissions, pupils, or campus photograph." /></div>
+      <section className="relative flex min-h-[62vh] items-end overflow-hidden bg-[#07172f] text-white">
+        {getImage(cms, 2) ? (
+          <img src={getImage(cms, 2)} alt={imageAlt(displayName, 'Admissions')} className="absolute inset-0 h-full w-full object-cover" referrerPolicy="no-referrer" />
+        ) : (
+          <div className="absolute inset-0 bg-[linear-gradient(135deg,#07172f_0%,#10294e_65%,#c99a2e_145%)]" role="img" aria-label={imageAlt(displayName, 'Admissions image placeholder')} />
+        )}
+        <div className="absolute inset-0 bg-[#07172f]/62" />
+        <div className="relative mx-auto w-full max-w-7xl px-4 pb-14 pt-28 sm:px-6 lg:px-8">
+          <div className="max-w-3xl">
+            <p className="text-xs font-bold uppercase tracking-[0.22em] text-amber-200">Admissions & Contact</p>
+            <h1 className="mt-5 text-4xl font-extrabold leading-tight sm:text-6xl">Begin Your Child's Journey at SouthGold</h1>
+            <p className="mt-6 text-base leading-8 text-white/85">{cms.admissionsDesc || fallbackCms.admissionsDesc}</p>
+          </div>
         </div>
       </section>
       <section className="bg-white py-16 dark:bg-slate-950">
@@ -858,13 +882,13 @@ export default function LandingPage({
   return (
     <div className="min-h-screen bg-white font-sans text-slate-900 dark:bg-slate-950 dark:text-slate-100">
       <JsonLd />
-      <PublicNav />
-      {currentPath === '/login' && <LoginIndex />}
-      {activeRole && <RoleLogin role={activeRole} />}
-      {!activeRole && currentPath === '/' && <HomePage />}
-      {!activeRole && currentPath === '/about' && <AboutPage />}
-      {!activeRole && currentPath === '/admissions' && <AdmissionsPage />}
-      {!activeRole && currentPath !== '/login' && <Footer />}
+      {PublicNav()}
+      {currentPath === '/login' && LoginIndex()}
+      {activeRole && RoleLogin({ role: activeRole })}
+      {!activeRole && currentPath === '/' && HomePage()}
+      {!activeRole && currentPath === '/about' && AboutPage()}
+      {!activeRole && currentPath === '/admissions' && AdmissionsPage()}
+      {!activeRole && currentPath !== '/login' && Footer()}
 
       {(selectedActivity || selectedBulletin) && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/75 p-4" onClick={() => { setSelectedActivity(null); setSelectedBulletin(null); }}>
