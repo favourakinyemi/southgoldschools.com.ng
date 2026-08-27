@@ -4,6 +4,17 @@ import 'dotenv/config';
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SECRET_KEY;
 
+export function getSupabaseProjectRef() {
+  if (!supabaseUrl) return null;
+  try {
+    const hostname = new URL(supabaseUrl).hostname;
+    const match = hostname.match(/^([^.]+)\.supabase\.co$/);
+    return match?.[1] ?? hostname;
+  } catch {
+    return null;
+  }
+}
+
 if (!supabaseUrl || !supabaseServiceKey) {
   console.warn(
     '[Supabase] SUPABASE_URL and SUPABASE_SECRET_KEY are not set. ' +
