@@ -164,26 +164,12 @@ function formatPhoneForWhatsApp(value: string) {
   return digits || '2347067742997';
 }
 
-function getImage(cms: any, index = 0) {
-  const images = [
-    ...(Array.isArray(cms.heroImages) ? cms.heroImages : []),
-    ...(Array.isArray(cms.gallery) ? cms.gallery : []),
-  ].filter(Boolean);
-  return images[index % Math.max(images.length, 1)] || '';
-}
-
-function isSuitableSchoolPhoto(src?: string) {
-  if (!src) return false;
-  const lowered = src.toLowerCase();
-  return !['summer', 'banner', 'flyer', 'chatgpt', 'promo', 'promotion'].some((term) => lowered.includes(term));
-}
-
 function getSchoolPhoto(cms: any, index = 0) {
   const images = [
     ...(Array.isArray(cms.heroImages) ? cms.heroImages : []),
     ...(Array.isArray(cms.gallery) ? cms.gallery : []),
     cms.principalPhoto,
-  ].filter(isSuitableSchoolPhoto);
+  ].filter(Boolean);
   return images[index % Math.max(images.length, 1)] || '';
 }
 
@@ -242,7 +228,7 @@ function imageAlt(schoolName: string, label: string) {
   return `${label} at ${schoolName}`;
 }
 
-function EditorialImage({ src, alt, label, tall = false }: { src?: string; alt: string; label: string; tall?: boolean }) {
+function EditorialImage({ src, alt, tall = false }: { src?: string; alt: string; label?: string; tall?: boolean }) {
   if (src) {
     return (
       <img
@@ -257,15 +243,10 @@ function EditorialImage({ src, alt, label, tall = false }: { src?: string; alt: 
 
   return (
     <div
-      className={`flex h-full min-h-[260px] w-full items-end bg-[linear-gradient(135deg,#07172f_0%,#10294e_52%,#c99a2e_100%)] p-6 text-white ${tall ? 'lg:min-h-[560px]' : ''}`}
+      className={`h-full min-h-[260px] w-full bg-[linear-gradient(135deg,#07172f_0%,#10294e_52%,#c99a2e_100%)] ${tall ? 'lg:min-h-[560px]' : ''}`}
       role="img"
       aria-label={alt}
-    >
-      <div>
-        <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-amber-200">Image placeholder</p>
-        <p className="mt-2 max-w-xs text-sm text-white/85">{label}</p>
-      </div>
-    </div>
+    />
   );
 }
 
@@ -738,7 +719,7 @@ export default function LandingPage({
             <div className="mt-10 grid gap-6 lg:grid-cols-3">
               {(activities.length ? activities.slice(0, 3) : recentNews).map((item: any, index: number) => (
                 <article key={item.id || item.title} className="bg-white">
-                  <div className="aspect-[4/3] overflow-hidden"><EditorialImage src={isSuitableSchoolPhoto(item.imgUrl || item.image) ? item.imgUrl || item.image : getSchoolPhoto(cms, index + 8)} alt={imageAlt(displayName, item.title)} label="Activity image placeholder." /></div>
+                  <div className="aspect-[4/3] overflow-hidden"><EditorialImage src={item.imgUrl || item.image || getSchoolPhoto(cms, index + 8)} alt={imageAlt(displayName, item.title)} label="Activity image placeholder." /></div>
                   <div className="p-6">
                     <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#9f7622]">{item.badge || item.date || 'School Update'}</p>
                     <h3 className="mt-3 text-lg font-extrabold text-[#07172f]">{item.title}</h3>
