@@ -23,3 +23,7 @@ playwright-report/
 db.json
 *.tsbuildinfo
 .DS_Store
+.env
+.env.local
+.env.production
+.env.development

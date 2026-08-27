@@ -16,6 +16,8 @@ export interface PublicRoute {
 
 export const PUBLIC_ROUTES: PublicRoute[] = [
   { path: '/', indexable: true },
+  { path: '/about', indexable: true },
+  { path: '/admissions', indexable: true },
   { path: '/login', indexable: false },
   { path: '/login/super-admin', indexable: false },
   { path: '/login/staff-admin', indexable: false },

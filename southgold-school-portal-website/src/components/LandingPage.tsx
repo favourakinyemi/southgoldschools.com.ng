@@ -1,35 +1,28 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  Sun, 
-  Moon,
-  ShieldAlert, 
-  UserCheck, 
-  BookOpen, 
-  Users, 
-  GraduationCap, 
-  X, 
-  Lock, 
-  Mail, 
-  Globe,
-  ArrowRight,
+import React, { useEffect, useMemo, useState } from 'react';
+import {
   ArrowLeft,
-  Sparkles,
-  Award,
-  CheckCircle2,
-  Clock,
-  Phone,
-  MapPin,
-  Laptop,
+  ArrowRight,
+  BookOpen,
   Check,
-  Send,
-  HelpCircle,
+  ChevronDown,
+  GraduationCap,
+  Laptop,
+  Lock,
+  Mail,
+  MapPin,
   Menu,
-  BookMarked,
+  Moon,
+  Phone,
+  Send,
+  ShieldAlert,
   ShieldCheck,
-  Building
+  Sun,
+  UserCheck,
+  Users,
+  X,
 } from 'lucide-react';
-import { UserRole, SchoolActivity } from '../types';
 import { PUBLIC_ROUTES } from '../publicRoutes';
+import { SchoolActivity, UserRole } from '../types';
 
 interface LandingPageProps {
   onLogin: (email: string, password: string, expectedRole?: UserRole, rememberMe?: boolean) => Promise<void>;
@@ -45,55 +38,279 @@ interface LandingPageProps {
   initialCms?: any;
 }
 
+interface EnquiryFormState {
+  parentName: string;
+  phone: string;
+  email: string;
+  childName: string;
+  childAge: string;
+  classApplyingFor: string;
+  preferredContact: string;
+  message: string;
+}
+
+const SITE_URL = 'https://southgoldschools.com.ng';
+const DEFAULT_SCHOOL_NAME = 'SouthGold Schools';
+const DEFAULT_ADDRESS = '3, Fagbeyi Ige, Olusi Crescent, Hopeville Estate, Haruna Bus-Stop, Sangotedo, Lagos, Nigeria';
+const DEFAULT_EMAIL = 'southgoldmontessorischools@gmail.com';
+const DEFAULT_PHONE = '07067742997, 08025951409';
+
+const fallbackCms = {
+  motto: 'Learn and grow together.',
+  whatsapp: '+2347067742997',
+  facebook: '',
+  instagram: '',
+  youtube: '',
+  website: SITE_URL,
+  welcomeTitle: 'Welcome to SouthGold Schools',
+  welcomeDesc:
+    'SouthGold Schools provides a caring learning environment where pupils are guided to grow in knowledge, confidence, character, and creativity.',
+  aboutTitle: 'A calm, purposeful place to learn',
+  aboutDesc:
+    'We combine strong classroom teaching with attentive guidance, practical learning, and values that help children become capable young people.',
+  mission: 'To foster creative thinking, intellectual curiosity, and moral integrity in every student.',
+  vision: 'To be a leading educational institution recognised for academic strength and character development.',
+  principalMessage:
+    'Welcome to our community. At SouthGold, we believe that education should nurture the whole child and prepare every learner for lifelong growth.',
+  principalName: '',
+  principalPhoto: '',
+  heroImages: [],
+  gallery: [],
+  admissionsTitle: 'Admissions are open',
+  admissionsDesc:
+    'We welcome enquiries from parents who want a warm, structured, and ambitious school environment for their children.',
+  news: [],
+  announcements: [],
+};
+
+const portalRolesConfig = [
+  { role: 'SUPER_ADMIN' as UserRole, title: 'Super Admin', badge: 'Master Access', desc: 'Full administrator control over settings, records, and school operations.', icon: ShieldAlert },
+  { role: 'SCHOOL_ADMIN' as UserRole, title: 'Staff Admin', badge: 'Management', desc: 'Manage students, classes, subjects, attendance, and school records.', icon: UserCheck },
+  { role: 'TEACHER' as UserRole, title: 'Teacher Portal', badge: 'Academics', desc: 'Record assessments, manage attendance, and follow assigned classes.', icon: BookOpen },
+  { role: 'PARENT' as UserRole, title: 'Parent Portal', badge: 'Families', desc: 'Follow your child\'s results, attendance, notices, and support messages.', icon: Users },
+  { role: 'STUDENT' as UserRole, title: 'Student Portal', badge: 'Learners', desc: 'View personal academic records and school updates.', icon: GraduationCap },
+];
+
+const PATH_TO_ROLE: Record<string, UserRole> = {
+  '/login/super-admin': 'SUPER_ADMIN',
+  '/login/staff-admin': 'SCHOOL_ADMIN',
+  '/login/teacher': 'TEACHER',
+  '/login/parent': 'PARENT',
+  '/login/student': 'STUDENT',
+};
+
+const ROLE_TO_PATH: Record<UserRole, string> = {
+  SUPER_ADMIN: '/login/super-admin',
+  SCHOOL_ADMIN: '/login/staff-admin',
+  TEACHER: '/login/teacher',
+  PARENT: '/login/parent',
+  STUDENT: '/login/student',
+};
+
+const stageSummaries = [
+  {
+    title: 'Early Years / Montessori',
+    kicker: 'A gentle start',
+    desc: 'A nurturing foundation where young learners build language, number sense, independence, social confidence, and curiosity through guided activities.',
+  },
+  {
+    title: 'Primary School',
+    kicker: 'Strong basics',
+    desc: 'Focused teaching in core subjects, reading, writing, numeracy, creative expression, and personal responsibility.',
+  },
+  {
+    title: 'Secondary School',
+    kicker: 'Growing confidence',
+    desc: 'Structured academic work, wider subject exposure, digital learning, leadership habits, and preparation for the next stage.',
+  },
+];
+
+const strengths = [
+  'Academic excellence',
+  'Individual attention',
+  'Character development',
+  'ICT and digital learning',
+  'Safe learning environment',
+  'Qualified teachers',
+  'Creativity',
+  'Extracurricular development',
+];
+
+const admissionSteps = [
+  'Make an enquiry',
+  'Speak with the admissions team',
+  'Complete application',
+  'Assessment or interview where applicable',
+  'Admission confirmation',
+  'Enrollment',
+];
+
+const syntheticBulletinTitles = new Set([
+  'Inter-House Sports Festival 2026',
+  'STEAM Exhibition Day',
+  'Resumption for Third Term',
+]);
+
+function formatPhoneForWhatsApp(value: string) {
+  const digits = value.replace(/[^0-9]/g, '');
+  if (digits.startsWith('0')) return `234${digits.slice(1)}`;
+  return digits || '2347067742997';
+}
+
+function getImage(cms: any, index = 0) {
+  const images = [
+    ...(Array.isArray(cms.heroImages) ? cms.heroImages : []),
+    ...(Array.isArray(cms.gallery) ? cms.gallery : []),
+  ].filter(Boolean);
+  return images[index % Math.max(images.length, 1)] || '';
+}
+
+function imageAlt(schoolName: string, label: string) {
+  return `${label} at ${schoolName}`;
+}
+
+function EditorialImage({ src, alt, label, tall = false }: { src?: string; alt: string; label: string; tall?: boolean }) {
+  if (src) {
+    return (
+      <img
+        src={src}
+        alt={alt}
+        loading={tall ? 'eager' : 'lazy'}
+        className={`h-full min-h-[260px] w-full object-cover ${tall ? 'lg:min-h-[560px]' : ''}`}
+        referrerPolicy="no-referrer"
+      />
+    );
+  }
+
+  return (
+    <div
+      className={`flex h-full min-h-[260px] w-full items-end bg-[linear-gradient(135deg,#07172f_0%,#10294e_52%,#c99a2e_100%)] p-6 text-white ${tall ? 'lg:min-h-[560px]' : ''}`}
+      role="img"
+      aria-label={alt}
+    >
+      <div>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-amber-200">Image placeholder</p>
+        <p className="mt-2 max-w-xs text-sm text-white/85">{label}</p>
+      </div>
+    </div>
+  );
+}
+
+function LogoMark({ logoUrl, schoolName }: { logoUrl?: string; schoolName: string }) {
+  return (
+    <div className="flex items-center gap-3">
+      {logoUrl ? (
+        <img src={logoUrl} alt={`${schoolName} logo`} className="h-10 w-10 object-contain" referrerPolicy="no-referrer" />
+      ) : (
+        <div className="flex h-10 w-10 items-center justify-center bg-[#c99a2e] text-sm font-black text-[#07172f]">SG</div>
+      )}
+      <div className="leading-tight">
+        <p className="text-sm font-extrabold uppercase tracking-[0.16em] text-[#07172f] dark:text-white">SouthGold</p>
+        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">Schools</p>
+      </div>
+    </div>
+  );
+}
+
+function Field({ label, value, onChange, type = 'text', required = false }: { label: string; value: string; onChange: (value: string) => void; type?: string; required?: boolean }) {
+  return (
+    <div>
+      <label className="mb-2 block text-xs font-bold uppercase tracking-[0.16em] text-slate-600 dark:text-slate-300">
+        {label}
+        {required ? ' *' : ''}
+      </label>
+      <input
+        type={type}
+        required={required}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-[#c99a2e] focus:ring-2 focus:ring-[#c99a2e]/20 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+      />
+    </div>
+  );
+}
+
 export default function LandingPage({
   onLogin,
   darkTheme,
   onToggleTheme,
-  activities,
+  activities = [],
   logoUrl,
   schoolName,
   schoolEmail,
   schoolPhone,
   schoolAddress,
   globalLoginError,
-  initialCms
+  initialCms,
 }: LandingPageProps) {
+  const [cms, setCms] = useState<any>(() => ({ ...fallbackCms, ...(initialCms ?? {}) }));
+  const [mobileOpen, setMobileOpen] = useState(false);
   const [selectedActivity, setSelectedActivity] = useState<SchoolActivity | null>(null);
-  const [selectedBulletin, setSelectedBulletin] = useState<{ kind: 'news' | 'announcement'; date: string; title: string; content: string; image?: string } | null>(null);
-  const [selectedGalleryIndex, setSelectedGalleryIndex] = useState<number | null>(null);
-
-  // Seeded from the server-fetched initialCms when available (the normal
-  // case) so the first paint already shows real content -- these hardcoded
-  // values are only a fallback for if that server fetch failed, not what
-  // gets shown in the common case.
-  const [cms, setCms] = useState<any>(() => initialCms ?? {
-    motto: 'Learn and Grow Together.',
-    whatsapp: '+234 803 123 4567',
-    facebook: 'https://facebook.com',
-    instagram: 'https://instagram.com',
-    youtube: 'https://youtube.com',
-    website: 'https://southgoldschools.com.ng',
-    welcomeTitle: 'Welcome to SouthGold Montessori School',
-    welcomeDesc: 'We provide a warm, nurturing environment where every child can flourish academically, socially, and emotionally.',
-    aboutTitle: 'Our Heritage of Excellence',
-    aboutDesc: 'Established with a vision to cultivate outstanding young minds, SouthGold Montessori School combines modern learning methodologies with classical values.',
-    mission: 'To foster creative thinking, intellectual curiosity, and moral integrity in every student.',
-    vision: 'To be a premier educational institution recognized globally for academic leadership and character development.',
-    principalMessage: 'Welcome to our community. At SouthGold, we believe that education is the key to unlocking every child’s potential. We invite you to partner with us in this journey.',
-    principalName: 'Mrs. Olufunmilayo Fagbeyi',
-    principalPhoto: '',
-    heroImages: [],
-    gallery: [],
-    admissionsTitle: 'Admissions Open for 2026/2027 Session',
-    admissionsDesc: 'We are currently accepting applications for Preschool, Primary, and Junior Secondary classes. Reach out to our admissions desk to learn more.',
-    news: [
-      { id: '1', title: 'Inter-House Sports Festival 2026', content: 'Our annual inter-house sports festival was held with high spirits and excellent performances from all houses.', date: '2026-06-15' },
-      { id: '2', title: 'STEAM Exhibition Day', content: 'Students showcased amazing science, technology, engineering, arts, and math projects at our annual exhibition.', date: '2026-05-20' }
-    ],
-    announcements: [
-      { id: '1', title: 'Resumption for Third Term', content: 'Third term begins on Monday, May 11th, 2026. All pupils are expected to be in full uniform.', date: '2026-05-08' }
-    ]
+  const [selectedBulletin, setSelectedBulletin] = useState<any | null>(null);
+  const [classes, setClasses] = useState<{ classId: string; stage?: string }[]>([]);
+  const [loginError, setLoginError] = useState<string | null>(null);
+  const [emailInput, setEmailInput] = useState('');
+  const [passwordInput, setPasswordInput] = useState('');
+  const [rememberMe, setRememberMe] = useState(true);
+  const [loginLoading, setLoginLoading] = useState(false);
+  const [formState, setFormState] = useState<EnquiryFormState>({
+    parentName: '',
+    phone: '',
+    email: '',
+    childName: '',
+    childAge: '',
+    classApplyingFor: '',
+    preferredContact: 'Phone call',
+    message: '',
   });
+  const [formError, setFormError] = useState<string | null>(null);
+  const [contactSubmitted, setContactSubmitted] = useState(false);
+  const [contactLoading, setContactLoading] = useState(false);
+
+  const validPaths = useMemo(() => new Set(PUBLIC_ROUTES.map((route) => route.path)), []);
+  const resolvePathFromLocation = (location: Location) => {
+    const redirectPath = new URLSearchParams(location.search).get('redirect');
+    if (redirectPath) {
+      const safePath = redirectPath.split('?')[0];
+      if (validPaths.has(safePath)) return safePath;
+    }
+    return validPaths.has(location.pathname) ? location.pathname : '/';
+  };
+  const [currentPath, setCurrentPath] = useState(() => resolvePathFromLocation(window.location));
+
+  const displayName = schoolName || cms.schoolName || DEFAULT_SCHOOL_NAME;
+  const displayEmail = schoolEmail || DEFAULT_EMAIL;
+  const displayPhone = schoolPhone || DEFAULT_PHONE;
+  const displayAddress = schoolAddress || DEFAULT_ADDRESS;
+  const whatsappNumber = formatPhoneForWhatsApp(cms.whatsapp || displayPhone);
+  const mapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(displayAddress)}`;
+  const recentNews = [...(cms.news || []), ...(cms.announcements || [])]
+    .filter((item) => item && !syntheticBulletinTitles.has(item.title))
+    .slice(0, 3);
+
+  useEffect(() => {
+    fetch('/api/cms')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data && !data.error) setCms((existing: any) => ({ ...existing, ...data }));
+      })
+      .catch((err) => console.error('Error fetching CMS:', err));
+
+    fetch('/api/classes-subjects')
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data) => setClasses(Array.isArray(data) ? data : []))
+      .catch(() => setClasses([]));
+  }, []);
+
+  useEffect(() => {
+    const handlePopState = () => setCurrentPath(resolvePathFromLocation(window.location));
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  });
+
+  useEffect(() => {
+    if (globalLoginError) setLoginError(globalLoginError);
+  }, [globalLoginError]);
 
   useEffect(() => {
     if (!selectedActivity && !selectedBulletin) return;
@@ -107,175 +324,107 @@ export default function LandingPage({
     return () => window.removeEventListener('keydown', handleEscape);
   }, [selectedActivity, selectedBulletin]);
 
-  useEffect(() => {
-    if (selectedGalleryIndex === null) return;
-    const galleryLength = cms.gallery?.length || 0;
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setSelectedGalleryIndex(null);
-      else if (e.key === 'ArrowRight') setSelectedGalleryIndex((i) => (i === null ? i : (i + 1) % galleryLength));
-      else if (e.key === 'ArrowLeft') setSelectedGalleryIndex((i) => (i === null ? i : (i - 1 + galleryLength) % galleryLength));
-    };
-    window.addEventListener('keydown', handleKey);
-    return () => window.removeEventListener('keydown', handleKey);
-  }, [selectedGalleryIndex, cms.gallery]);
-
-  useEffect(() => {
-    fetch('/api/cms')
-      .then(res => res.json())
-      .then(data => {
-        if (data && !data.error) {
-          setCms(data);
-        }
-      })
-      .catch(err => console.error('Error fetching CMS:', err));
-  }, []);
-
-  const validPaths = React.useMemo(() => new Set(PUBLIC_ROUTES.map(r => r.path)), []);
-
-  const resolvePathFromLocation = React.useCallback((location: Location) => {
-    const redirectPath = new URLSearchParams(location.search).get('redirect');
-    if (redirectPath) {
-      const safePath = redirectPath.split('?')[0];
-      if (validPaths.has(safePath)) {
-        return safePath;
-      }
-    }
-
-    const pathname = location.pathname;
-    return validPaths.has(pathname) ? pathname : '/';
-  }, [validPaths]);
-
-  const [currentPath, setCurrentPath] = useState(() => resolvePathFromLocation(window.location));
-
   const handleNavigate = (path: string) => {
     const nextPath = validPaths.has(path) ? path : '/';
     setCurrentPath(nextPath);
+    setMobileOpen(false);
     window.history.pushState(null, '', nextPath);
-    window.scrollTo({ top: 0 });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  useEffect(() => {
-    const handlePopState = () => {
-      const nextPath = resolvePathFromLocation(window.location);
-      setCurrentPath(nextPath);
+  const updateForm = (key: keyof EnquiryFormState, value: string) => {
+    setFormState((state) => ({ ...state, [key]: value }));
+  };
+
+  const validateForm = () => {
+    if (!formState.parentName.trim()) return 'Please enter the parent or guardian name.';
+    if (!formState.phone.trim()) return 'Please enter a phone number.';
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formState.email.trim())) return 'Please enter a valid email address.';
+    if (!formState.childName.trim()) return 'Please enter the child\'s name.';
+    if (!formState.childAge.trim()) return 'Please enter the child\'s age.';
+    if (!formState.classApplyingFor.trim()) return 'Please select or enter the class applying for.';
+    return null;
+  };
+
+  const handleContactSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const error = validateForm();
+    if (error) {
+      setFormError(error);
+      return;
+    }
+
+    setFormError(null);
+    setContactLoading(true);
+
+    const message = [
+      `Parent/Guardian: ${formState.parentName}`,
+      `Phone: ${formState.phone}`,
+      `Email: ${formState.email}`,
+      `Child: ${formState.childName}`,
+      `Age: ${formState.childAge}`,
+      `Class Applying For: ${formState.classApplyingFor}`,
+      `Preferred Contact: ${formState.preferredContact}`,
+      `Message: ${formState.message || 'No additional message supplied.'}`,
+    ].join('\n');
+
+    const ticketPayload = {
+      senderName: `Admission Inquiry: ${formState.parentName}`,
+      senderEmail: formState.email,
+      senderRole: 'PARENT' as UserRole,
+      subject: `[Admissions] ${formState.classApplyingFor}`,
+      message,
+      status: 'Open' as const,
+      createdAt: new Date().toISOString(),
+      replies: [],
     };
-    window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
-  }, [resolvePathFromLocation]);
 
-  const [loginError, setLoginError] = useState<string | null>(null);
+    const notificationPayloads = (['SUPER_ADMIN', 'SCHOOL_ADMIN'] as const).map((recipientRole) => ({
+      title: 'New Admission Enquiry',
+      content: `${formState.parentName} submitted an admission enquiry for ${formState.childName} (${formState.classApplyingFor}).`,
+      category: 'System' as const,
+      date: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }),
+      recipientRole,
+    }));
 
-  useEffect(() => {
-    if (globalLoginError) {
-      setLoginError(globalLoginError);
-    }
-  }, [globalLoginError]);
-
-  const PATH_TO_ROLE: Record<string, UserRole> = {
-    '/login/super-admin': 'SUPER_ADMIN',
-    '/login/staff-admin': 'SCHOOL_ADMIN',
-    '/login/teacher': 'TEACHER',
-    '/login/parent': 'PARENT',
-    '/login/student': 'STUDENT'
-  };
-
-  const ROLE_TO_PATH: Record<UserRole, string> = {
-    'SUPER_ADMIN': '/login/super-admin',
-    'SCHOOL_ADMIN': '/login/staff-admin',
-    'TEACHER': '/login/teacher',
-    'PARENT': '/login/parent',
-    'STUDENT': '/login/student'
-  };
-
-  const REMEMBERED_EMAIL_KEY = 'sg_remembered_email';
-  const [emailInput, setEmailInput] = useState(() => {
     try {
-      return window.localStorage.getItem(REMEMBERED_EMAIL_KEY) || '';
-    } catch {
-      return '';
+      const ticketRes = await fetch('/api/tickets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(ticketPayload),
+      });
+      if (!ticketRes.ok) throw new Error('The enquiry could not be saved. Please try again or contact the school directly.');
+
+      await fetch('/api/notifications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(notificationPayloads),
+      });
+
+      setContactSubmitted(true);
+      setFormState({
+        parentName: '',
+        phone: '',
+        email: '',
+        childName: '',
+        childAge: '',
+        classApplyingFor: '',
+        preferredContact: 'Phone call',
+        message: '',
+      });
+    } catch (err: any) {
+      setFormError(err.message || 'The enquiry could not be sent. Please try again.');
+    } finally {
+      setContactLoading(false);
     }
-  });
-  const [passwordInput, setPasswordInput] = useState('');
-  const [rememberMe, setRememberMe] = useState(true);
-  const [loginLoading, setLoginLoading] = useState(false);
-  
-
-
-  // Interactive Contact Us Form state
-  const [contactName, setContactName] = useState('');
-  const [contactEmail, setContactEmail] = useState('');
-  const [contactSubject, setContactSubject] = useState('Admission Inquiry');
-  const [contactMessage, setContactMessage] = useState('');
-  const [contactSubmitted, setContactSubmitted] = useState(false);
-  const [contactLoading, setContactLoading] = useState(false);
-
-  // Custom Role configuration with prepackaged user guides
-  const portalRolesConfig = [
-    {
-      role: 'SUPER_ADMIN' as UserRole,
-      title: "Super Admin",
-      badge: "Master Access",
-      desc: "Full administrator control over configurations, files, and synced accounts.",
-      icon: ShieldAlert,
-      color: "from-slate-900 to-indigo-950"
-    },
-    {
-      role: 'SCHOOL_ADMIN' as UserRole,
-      title: "Staff Admin",
-      badge: "Management",
-      desc: "Manage students, classes, subjects, and fees tracking.",
-      icon: UserCheck,
-      color: "from-slate-900 to-blue-950"
-    },
-    {
-      role: 'TEACHER' as UserRole,
-      title: "Teacher Portal",
-      badge: "Academics",
-      desc: "Record academic assessment grades and mark class attendance registers.",
-      icon: BookOpen,
-      color: "from-slate-900 to-emerald-950"
-    },
-    {
-      role: 'PARENT' as UserRole,
-      title: "Parent Portal",
-      badge: "General Desk",
-      desc: "Track children's reports, attendance records, and pay tuition fees.",
-      icon: Users,
-      color: "from-slate-900 to-amber-950"
-    },
-    {
-      role: 'STUDENT' as UserRole,
-      title: "Student Desk",
-      badge: "Personal Desk",
-      desc: "Core student area to take test drills and view report cards.",
-      icon: GraduationCap,
-      color: "from-slate-900 to-sky-950"
-    }
-  ];
-
-
-
-  const handleOpenLoginModal = (role: UserRole) => {
-    setEmailInput('');
-    setPasswordInput('');
-    setLoginError(null);
-    handleNavigate(ROLE_TO_PATH[role]);
   };
 
-  const handleOpenLoginPage = (role: UserRole) => {
-    setEmailInput('');
-    setPasswordInput('');
-    setLoginError(null);
-    handleNavigate(ROLE_TO_PATH[role]);
-  };
-
-  const handleLoginSubmit = async (e: React.FormEvent) => {
+  const submitLogin = async (e: React.FormEvent, role?: UserRole) => {
     e.preventDefault();
     setLoginError(null);
     setLoginLoading(true);
-
     try {
-      await onLogin(emailInput, passwordInput);
+      await onLogin(emailInput, passwordInput, role, rememberMe);
     } catch (err: any) {
       setLoginError(err.message || 'Login failed. Please check your credentials.');
     } finally {
@@ -283,1186 +432,452 @@ export default function LandingPage({
     }
   };
 
-  const handleContactSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setContactLoading(true);
+  const JsonLd = () => (
+    <script
+      type="application/ld+json"
+      dangerouslySetInnerHTML={{
+        __html: JSON.stringify({
+          '@context': 'https://schema.org',
+          '@type': 'EducationalOrganization',
+          name: displayName,
+          url: SITE_URL,
+          logo: logoUrl || undefined,
+          telephone: displayPhone,
+          email: displayEmail,
+          address: {
+            '@type': 'PostalAddress',
+            streetAddress: displayAddress,
+            addressLocality: 'Sangotedo',
+            addressRegion: 'Lagos',
+            addressCountry: 'NG',
+          },
+          sameAs: [cms.facebook, cms.instagram, cms.youtube].filter(Boolean),
+        }),
+      }}
+    />
+  );
 
-    const ticketPayload = {
-      senderName: `Admission Inquiry: ${contactName}`,
-      senderEmail: contactEmail,
-      senderRole: 'PARENT' as UserRole,
-      subject: `[Admissions] ${contactSubject}`,
-      message: contactMessage,
-      status: 'Open' as const,
-      createdAt: new Date().toISOString(),
-      replies: []
-    };
+  const PublicNav = () => (
+    <header className="sticky top-0 z-50 border-b border-slate-200/80 bg-white/95 backdrop-blur dark:border-slate-800 dark:bg-slate-950/95">
+      <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+        <button type="button" onClick={() => handleNavigate('/')} className="text-left">
+          <LogoMark logoUrl={logoUrl} schoolName={displayName} />
+        </button>
 
-    // One notification per admin role -- both Super Admin and School Admin
-    // need their own row since a notification's recipientRole is a single
-    // value and the bell/list only shows a notification whose recipientRole
-    // matches the viewer's own role (or 'ALL').
-    const notificationPayloads = (['SUPER_ADMIN', 'SCHOOL_ADMIN'] as const).map((recipientRole) => ({
-      title: `New Admission/Fees Inquiry Logged`,
-      content: `Inquiry from ${contactName} (${contactEmail}) has been logged. Subject: ${contactSubject}. Message: "${contactMessage}"`,
-      category: 'System' as const,
-      date: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }),
-      recipientRole
-    }));
+        <nav className="hidden items-center gap-8 text-sm font-semibold text-slate-700 lg:flex dark:text-slate-200">
+          <button onClick={() => handleNavigate('/')} className={currentPath === '/' ? 'text-[#c99a2e]' : 'hover:text-[#c99a2e]'}>Home</button>
+          <button onClick={() => handleNavigate('/about')} className={currentPath === '/about' ? 'text-[#c99a2e]' : 'hover:text-[#c99a2e]'}>About & Academics</button>
+          <button onClick={() => handleNavigate('/admissions')} className={currentPath === '/admissions' ? 'text-[#c99a2e]' : 'hover:text-[#c99a2e]'}>Admissions</button>
+        </nav>
 
-    try {
-      // 1. Post to tickets DB so Staff Admin and Support Desk processes it
-      await fetch('/api/tickets', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(ticketPayload),
-      });
+        <div className="hidden items-center gap-3 lg:flex">
+          <button type="button" onClick={onToggleTheme} className="flex h-10 w-10 items-center justify-center border border-slate-200 text-slate-700 transition hover:border-[#c99a2e] hover:text-[#c99a2e] dark:border-slate-800 dark:text-slate-200" aria-label="Toggle theme">
+            {darkTheme ? <Sun size={18} /> : <Moon size={18} />}
+          </button>
+          <button onClick={() => handleNavigate('/login')} className="border border-[#07172f] px-4 py-2 text-sm font-bold text-[#07172f] transition hover:bg-[#07172f] hover:text-white dark:border-white dark:text-white">Portal Login</button>
+          <button onClick={() => handleNavigate('/admissions')} className="bg-[#c99a2e] px-4 py-2 text-sm font-bold text-[#07172f] transition hover:bg-[#b38928]">Apply / Enquire</button>
+        </div>
 
-      // 2. Post notification alerts to both the Super Admin and School Admin dashboards
-      await fetch('/api/notifications', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(notificationPayloads),
-      });
-    } catch (err) {
-      console.error("Failed to forward inquiry alerts directly to admin portal:", err);
-    } finally {
-      setContactLoading(false);
-      setContactSubmitted(true);
-    }
-  };
-
-
-
-  if (currentPath === '/login') {
-    return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col justify-between font-sans transition-colors duration-200">
-        <header className="border-b border-slate-200 dark:border-slate-900 bg-white dark:bg-slate-900/50 backdrop-blur-md sticky top-0 z-50">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-            <div className="flex items-center gap-3 cursor-pointer" onClick={() => handleNavigate('/')}>
-              {logoUrl ? (
-                <img src={logoUrl} alt="Logo" className="h-9 w-9 object-contain rounded-lg" referrerPolicy="no-referrer" />
-              ) : (
-                <div className="w-9 h-9 rounded-xl bg-amber-500 flex items-center justify-center font-display font-black text-slate-950 text-sm">SG</div>
-              )}
-              <span className="font-display font-black text-sm tracking-widest text-slate-900 dark:text-slate-50 uppercase">
-                {schoolName || 'SOUTHGOLD'}
-              </span>
-            </div>
-            <button 
-              onClick={() => handleNavigate('/')}
-              className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 hover:text-amber-600 transition-colors"
-            >
-              Back to Home
-            </button>
-          </div>
-        </header>
-
-        <main className="flex-1 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-          <div className="max-w-4xl w-full space-y-8 text-center animate-fade-in">
-            <div>
-              <span className="text-[10px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-400 bg-amber-500/10 px-3.5 py-1.5 rounded-full border border-amber-500/20">
-                Authorized Access Portals
-              </span>
-              <h2 className="text-3xl font-display font-bold text-slate-900 dark:text-slate-100 uppercase tracking-tight mt-4">
-                Select Your Access Gateway
-              </h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 max-w-md mx-auto font-medium">
-                Please click on your dedicated portal below to proceed to the secure credential check-in.
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 pt-6">
-              {portalRolesConfig.map((item) => {
-                const IconComp = item.icon;
-                const pathTarget = ROLE_TO_PATH[item.role];
-                return (
-                  <button
-                    key={item.role}
-                    type="button"
-                    onClick={() => handleNavigate(pathTarget)}
-                    className="text-center p-6 rounded-2xl border bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-amber-500 dark:hover:border-amber-500 hover:shadow-md transition-all flex flex-col items-center justify-center gap-4 group cursor-pointer"
-                  >
-                    <div className="w-12 h-12 rounded-2xl bg-slate-50 dark:bg-slate-950 text-slate-600 dark:text-slate-450 border border-slate-200 dark:border-slate-800 group-hover:bg-amber-500 group-hover:text-slate-950 group-hover:border-amber-500 flex items-center justify-center transition-all">
-                      <IconComp size={20} />
-                    </div>
-                    <div>
-                      <h4 className="font-extrabold text-xs sm:text-sm text-slate-900 dark:text-slate-50 uppercase tracking-wider">
-                        {item.title}
-                      </h4>
-                      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest block mt-1">
-                        {item.badge}
-                      </span>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </main>
-
-        <footer className="border-t border-slate-200 dark:border-slate-900 py-6 text-center text-[10px] text-slate-400">
-          <p>© 2026 SouthGold Montessori School. Secure Authorization Portal.</p>
-        </footer>
+        <button type="button" onClick={() => setMobileOpen((open) => !open)} className="flex h-10 w-10 items-center justify-center border border-slate-200 text-[#07172f] lg:hidden dark:border-slate-800 dark:text-white" aria-label="Open menu" aria-expanded={mobileOpen}>
+          {mobileOpen ? <X size={20} /> : <Menu size={20} />}
+        </button>
       </div>
-    );
-  }
 
-  const activeRole = PATH_TO_ROLE[currentPath];
-  if (activeRole) {
-    const roleConfig = portalRolesConfig.find(item => item.role === activeRole);
-    const IconComp = roleConfig?.icon || ShieldCheck;
-    const roleTitle = roleConfig?.title || 'Portal';
-
-    return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col justify-between font-sans transition-colors duration-200">
-        <header className="border-b border-slate-200 dark:border-slate-900 bg-white dark:bg-slate-900/50 backdrop-blur-md sticky top-0 z-50">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-            <div className="flex items-center gap-3 cursor-pointer" onClick={() => handleNavigate('/')}>
-              {logoUrl ? (
-                <img src={logoUrl} alt="Logo" className="h-9 w-9 object-contain rounded-lg" referrerPolicy="no-referrer" />
-              ) : (
-                <div className="w-9 h-9 rounded-xl bg-amber-500 flex items-center justify-center font-display font-black text-slate-950 text-sm">SG</div>
-              )}
-              <span className="font-display font-black text-sm tracking-widest text-slate-900 dark:text-slate-50 uppercase">
-                {schoolName || 'SOUTHGOLD'}
-              </span>
-            </div>
-            <button 
-              onClick={() => handleNavigate('/login')}
-              className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 hover:text-amber-600 transition-colors flex items-center gap-1"
-            >
-              <ArrowLeft size={12} /> Back to Portals
+      {mobileOpen && (
+        <div className="border-t border-slate-200 bg-white px-4 py-4 lg:hidden dark:border-slate-800 dark:bg-slate-950">
+          <div className="flex flex-col gap-2 text-sm font-semibold">
+            {[
+              ['Home', '/'],
+              ['About & Academics', '/about'],
+              ['Admissions', '/admissions'],
+              ['Portal Login', '/login'],
+            ].map(([label, path]) => (
+              <button key={path} onClick={() => handleNavigate(path)} className="px-2 py-3 text-left text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-900">{label}</button>
+            ))}
+            <button onClick={onToggleTheme} className="flex items-center gap-2 px-2 py-3 text-left text-slate-700 dark:text-slate-200">
+              {darkTheme ? <Sun size={16} /> : <Moon size={16} />} Theme
             </button>
           </div>
-        </header>
+        </div>
+      )}
+    </header>
+  );
 
-        <main className="flex-1 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-          <div className="max-w-md w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-850 rounded-3xl overflow-hidden shadow-lg animate-fade-in">
-            <div className="bg-slate-950 text-white p-6 relative flex flex-col items-center text-center">
-              <div className="w-12 h-12 rounded-2xl bg-amber-500 text-slate-950 flex items-center justify-center border border-amber-600/35 mb-3">
-                <IconComp size={22} />
-              </div>
-              <div className="flex items-center gap-1.5 text-amber-500 font-bold uppercase tracking-widest text-[9px]">
-                <ShieldCheck size={12} />
-                <span>Secure Authorization</span>
-              </div>
-              <h3 className="font-display font-black text-xl text-slate-50 uppercase tracking-tight mt-1">
-                {roleTitle} Login
-              </h3>
-              <p className="text-[10px] text-slate-400 mt-1 max-w-xs leading-normal">
-                Please enter your registered credentials below. Role-isolation is actively enforced.
-              </p>
-            </div>
-
-            <form onSubmit={async (e) => {
-              e.preventDefault();
-              setLoginError(null);
-              setLoginLoading(true);
-              try {
-                await onLogin(emailInput, passwordInput, activeRole, rememberMe);
-                try {
-                  if (rememberMe) {
-                    window.localStorage.setItem(REMEMBERED_EMAIL_KEY, emailInput);
-                  } else {
-                    window.localStorage.removeItem(REMEMBERED_EMAIL_KEY);
-                  }
-                } catch {}
-              } catch (err: any) {
-                setLoginError(err.message || 'Login failed. Please check your credentials.');
-              } finally {
-                setLoginLoading(false);
-              }
-            }} className="p-6 space-y-4">
-              {loginError && (
-                <div className="bg-rose-50 border border-rose-200 dark:bg-rose-950/25 dark:border-rose-900/50 rounded-xl p-3.5 text-xs text-rose-600 dark:text-rose-400 font-semibold shadow-xs">
-                  ⚠️ {loginError}
-                </div>
-              )}
-
-              <div className="space-y-3.5">
-                <div>
-                  <label className="text-[9px] uppercase font-bold tracking-wider text-slate-500 block mb-1">User Email Address</label>
-                  <div className="relative">
-                    <input
-                      type="email"
-                      required
-                      autoComplete="username"
-                      value={emailInput}
-                      onChange={(e) => setEmailInput(e.target.value)}
-                      placeholder={`e.g. ${activeRole.toLowerCase()}@southgold.com`}
-                      className="w-full bg-slate-50 dark:bg-slate-950 text-xs py-2.5 pl-9 pr-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-1 focus:ring-amber-500 text-slate-800 dark:text-slate-200"
-                    />
-                    <Mail className="absolute left-3 top-3.5 text-slate-400" size={13} />
-                  </div>
-                </div>
-
-                <div>
-                  <div className="flex justify-between items-center mb-1">
-                    <label className="text-[9px] uppercase font-bold tracking-wider text-slate-500">Security Password</label>
-                  </div>
-                  <div className="relative">
-                    <input
-                      type="password"
-                      required
-                      autoComplete="current-password"
-                      value={passwordInput}
-                      onChange={(e) => setPasswordInput(e.target.value)}
-                      placeholder="••••••••"
-                      className="w-full bg-slate-50 dark:bg-slate-950 text-xs py-2.5 pl-9 pr-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-1 focus:ring-amber-500 text-slate-800 dark:text-slate-200"
-                    />
-                    <Lock className="absolute left-3 top-3.5 text-slate-400" size={13} />
-                  </div>
-                  <div className="flex justify-between items-center mt-2">
-                    <label className="flex items-center gap-1.5 text-[10px] text-slate-500 dark:text-slate-400 font-semibold cursor-pointer select-none">
-                      <input
-                        type="checkbox"
-                        checked={rememberMe}
-                        onChange={(e) => setRememberMe(e.target.checked)}
-                        className="h-3 w-3 rounded border-slate-300 dark:border-slate-700 text-amber-500 focus:ring-amber-500 cursor-pointer"
-                      />
-                      Remember me
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() => setLoginError("To reset your password, please contact the SouthGold Admin Desk or School Registrar directly.")}
-                      className="text-[10px] text-amber-600 dark:text-amber-500 hover:underline font-semibold focus:outline-none"
-                    >
-                      Forgot Password?
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              <button
-                type="submit"
-                disabled={loginLoading}
-                className="w-full bg-slate-900 hover:bg-slate-800 dark:bg-amber-500 dark:hover:bg-amber-600 text-white dark:text-slate-950 font-bold text-xs uppercase tracking-wider py-3.5 rounded-xl transition-all cursor-pointer shadow-xs flex items-center justify-center gap-2"
-              >
-                {loginLoading ? (
-                  <span>Authenticating...</span>
-                ) : (
-                  <>
-                    <span>Sign In to Portal</span>
-                    <ArrowRight size={12} />
-                  </>
-                )}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleNavigate('/login')}
-                className="w-full text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 text-center text-[10.5px] font-bold uppercase tracking-wider focus:outline-none pt-1"
-              >
-                ← Back to Portal Selection
-              </button>
-            </form>
+  const Footer = () => (
+    <footer className="bg-[#07172f] text-slate-300">
+      <div className="mx-auto grid max-w-7xl gap-10 px-4 py-14 sm:px-6 lg:grid-cols-[1.4fr_0.8fr_1fr] lg:px-8">
+        <div>
+          <LogoMark logoUrl={logoUrl} schoolName={displayName} />
+          <p className="mt-5 max-w-lg text-sm leading-7 text-slate-300">{cms.aboutDesc || fallbackCms.aboutDesc}</p>
+        </div>
+        <div>
+          <h2 className="text-sm font-bold uppercase tracking-[0.18em] text-white">Navigation</h2>
+          <div className="mt-5 grid gap-3 text-sm">
+            <button onClick={() => handleNavigate('/')} className="w-fit hover:text-[#c99a2e]">Home</button>
+            <button onClick={() => handleNavigate('/about')} className="w-fit hover:text-[#c99a2e]">About & Academics</button>
+            <button onClick={() => handleNavigate('/admissions')} className="w-fit hover:text-[#c99a2e]">Admissions</button>
+            <button onClick={() => handleNavigate('/login')} className="w-fit hover:text-[#c99a2e]">Portal Login</button>
           </div>
-        </main>
-
-        <footer className="border-t border-slate-200 dark:border-slate-900 py-6 text-center text-[10px] text-slate-400">
-          <p>© 2026 SouthGold Montessori School. Secure Role-Isolated Access Gateway.</p>
-        </footer>
+        </div>
+        <div>
+          <h2 className="text-sm font-bold uppercase tracking-[0.18em] text-white">Contact</h2>
+          <div className="mt-5 space-y-3 text-sm leading-6">
+            <p>{displayAddress}</p>
+            <p><a href={`tel:${displayPhone.replace(/[^0-9+]/g, '')}`} className="hover:text-[#c99a2e]">{displayPhone}</a></p>
+            <p><a href={`mailto:${displayEmail}`} className="hover:text-[#c99a2e]">{displayEmail}</a></p>
+            <div className="flex flex-wrap gap-4 pt-2 text-xs font-bold uppercase tracking-[0.14em]">
+              {cms.facebook && <a href={cms.facebook} target="_blank" rel="noopener noreferrer" className="hover:text-[#c99a2e]">Facebook</a>}
+              {cms.instagram && <a href={cms.instagram} target="_blank" rel="noopener noreferrer" className="hover:text-[#c99a2e]">Instagram</a>}
+              {cms.youtube && <a href={cms.youtube} target="_blank" rel="noopener noreferrer" className="hover:text-[#c99a2e]">YouTube</a>}
+            </div>
+          </div>
+        </div>
       </div>
-    );
-  }
+      <div className="border-t border-white/10 px-4 py-5 text-center text-xs text-slate-400">Copyright {new Date().getFullYear()} {displayName}. All rights reserved.</div>
+    </footer>
+  );
 
-  return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 font-sans transition-colors duration-250">
-      
-      <header className="sticky top-0 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800/80 z-40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex items-center justify-between">
-          
-          <div className="flex items-center gap-3">
-            {logoUrl ? (
-              <img 
-                src={logoUrl} 
-                alt="School Logo" 
-                className="w-11 h-11 object-contain rounded-xl shadow-md cursor-pointer hover:rotate-6 transition-transform bg-white p-0.5 border"
-                onClick={() => {
-                  handleNavigate('/');
-                }}
-                referrerPolicy="no-referrer"
-              />
-            ) : (
-              <div 
-                className="w-11 h-11 bg-slate-900 dark:bg-amber-550 rounded-xl flex items-center justify-center shadow-md cursor-pointer border border-amber-500/30 group hover:rotate-6 transition-transform"
-                onClick={() => {
-                  handleNavigate('/');
-                }}
-              >
-                <Award className="text-amber-500 dark:text-slate-950" size={24} />
-              </div>
-            )}
-            
-            <div>
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <h1 className="font-display font-bold text-base sm:text-lg text-slate-900 dark:text-slate-50 tracking-tight leading-none uppercase">
-                  {schoolName || 'SOUTHGOLD MONTESSORI SCHOOL'}
-                </h1>
-              </div>
+  const HomePage = () => (
+    <>
+      <section className="bg-[#f7f4ed]">
+        <div className="mx-auto grid max-w-7xl gap-10 px-4 py-12 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:px-8 lg:py-16">
+          <div className="flex flex-col justify-center">
+            <p className="text-xs font-bold uppercase tracking-[0.22em] text-[#9f7622]">{cms.motto || fallbackCms.motto}</p>
+            <h1 className="mt-5 max-w-3xl text-4xl font-extrabold leading-tight text-[#07172f] sm:text-5xl lg:text-6xl">Nurturing Excellence. Building Tomorrow's Leaders.</h1>
+            <p className="mt-6 max-w-2xl text-base leading-8 text-slate-700">{cms.welcomeDesc || fallbackCms.welcomeDesc} Our pupils are supported to grow academically, morally, creatively, and digitally.</p>
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+              <button onClick={() => handleNavigate('/admissions')} className="bg-[#c99a2e] px-6 py-3 text-sm font-bold text-[#07172f] transition hover:bg-[#b38928]">Apply for Admission</button>
+              <button onClick={() => handleNavigate('/about')} className="border border-[#07172f] px-6 py-3 text-sm font-bold text-[#07172f] transition hover:bg-[#07172f] hover:text-white">Discover SouthGold</button>
             </div>
           </div>
-
-          <nav className="hidden md:flex items-center gap-6 lg:gap-8 text-xs font-bold text-slate-600 dark:text-slate-350 uppercase tracking-wider">
-            <a href="#about" className="hover:text-amber-600 transition-colors">Our College</a>
-            <a href="#highlights" className="hover:text-amber-600 transition-colors">Campus Life</a>
-            <a href="#contact" className="hover:text-amber-600 transition-colors">Contact Us</a>
-          </nav>
-
-          <div className="flex items-center gap-3">
-            <button 
-              onClick={onToggleTheme}
-              className="p-2 rounded-lg text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800/60 transition-colors cursor-pointer focus:outline-none"
-              title="Switch Color Theme"
-              id="theme-toggle"
-            >
-              {darkTheme ? <Sun size={17} /> : <Moon size={17} />}
-            </button>
-
-            <button
-              onClick={() => {
-                handleNavigate('/login');
-              }}
-              className="bg-slate-900 hover:bg-slate-800 text-white dark:bg-amber-500 dark:hover:bg-amber-600 dark:text-slate-950 font-bold text-xs uppercase tracking-wider py-2 px-4 rounded-xl shadow-xs transition-all cursor-pointer hover:scale-[1.02]"
-              id="header-portal-access"
-            >
-              Portal Logins
-            </button>
-          </div>
-        </div>
-      </header>
-
-
-          {/* HERO SECTION - REDESIGNED: Extremely Clean, Prestige Academic Aesthetic with minimal text */}
-          <section className="relative py-12 lg:py-16 bg-gradient-to-b from-white to-slate-100 dark:from-slate-900 dark:to-slate-950 border-b border-slate-200 dark:border-slate-800/40 overflow-hidden">
-        
-        {/* Abstract subtle artistic background shapes */}
-        <div className="absolute top-10 right-10 w-96 h-96 bg-amber-500/5 dark:bg-amber-500/2 rounded-full blur-3xl pointer-events-none" />
-
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
-            
-            {/* Left Content Column */}
-            <div className="lg:col-span-7 space-y-6">
-              
-              {/* Admission Status */}
-              <div className="inline-flex items-center gap-2 bg-amber-100 dark:bg-amber-955/40 text-amber-900 dark:text-amber-400 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider">
-                <Sparkles size={11} className="text-amber-600" />
-                <span>{cms.welcomeTitle || 'Admissions Ongoing'}</span>
-              </div>
-
-              {/* motto heading */}
-              <h2 className="text-4xl sm:text-5xl lg:text-5xl font-display font-extrabold text-slate-900 dark:text-slate-50 leading-[1.1] tracking-tight whitespace-pre-line">
-                {cms.motto || 'Learn and\nGrow Together.'}
-              </h2>
-
-              <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 max-w-lg leading-relaxed font-normal">
-                {cms.welcomeDesc || 'SouthGold Montessori School provides a premier dual syllabus education focused on nurturing independent learning and academic excellence.'}
-              </p>
-
-              {/* Call-To-Action */}
-              <div className="pt-2 flex flex-wrap gap-3 items-center">
-                <a 
-                  href="#contact"
-                  className="bg-slate-900 hover:bg-slate-800 text-white dark:bg-amber-500 dark:hover:bg-amber-600 dark:text-slate-950 font-bold text-xs uppercase tracking-wider py-3 px-5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer"
-                >
-                  <span>Admission Enquiry</span>
-                  <ArrowRight size={13} />
-                </a>
-
-                <button 
-                  onClick={() => handleOpenLoginPage('SCHOOL_ADMIN')}
-                  className="bg-white hover:bg-slate-50 text-slate-805 dark:bg-slate-900 dark:hover:bg-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-800 px-5 py-3 rounded-xl text-xs uppercase tracking-wider font-bold transition-all cursor-pointer"
-                >
-                  Workplace Portals
-                </button>
-              </div>
-
-            </div>
-
-            {/* Right Graphics/Illustration Column */}
-            <div className="lg:col-span-5 relative">
-              <div className="relative mx-auto max-w-[400px] lg:max-w-none">
-                {/* Decorative retro frame effect */}
-                <div className="absolute -inset-1.5 bg-gradient-to-r from-amber-500 to-indigo-500 rounded-3xl blur-md opacity-25 pointer-events-none" />
-                
-                <div className="relative bg-white dark:bg-slate-900 p-3 rounded-3xl shadow-xl border border-slate-200 dark:border-slate-800">
-                  <img 
-                    src={cms.heroImages?.[0] || "https://images.unsplash.com/photo-1523050854058-8df90110c9f1?w=800&auto=format&fit=crop&q=80"} 
-                    alt="Students collaborating at SouthGold Montessori School" 
-                    className="rounded-2xl w-full h-[320px] object-cover filter brightness-95"
-                    referrerPolicy="no-referrer"
-                  />
-                  
-                  {/* Absolute Badge Widget */}
-                  <div className="absolute -bottom-4 -left-4 bg-slate-900 text-white p-3.5 rounded-2xl border border-slate-840 shadow-lg flex items-center gap-2.5 max-w-[210px]">
-                    <div className="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-500 flex items-center justify-center shrink-0">
-                      <Award size={16} />
-                    </div>
-                    <div>
-                      <h5 className="font-semibold text-[11px] uppercase text-amber-500">Academic Standard</h5>
-                      <p className="text-[10px] text-slate-300 mt-0.5 leading-snug">Empowering pupils morally & digitally</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-          </div>
+          <div className="overflow-hidden"><EditorialImage src={getImage(cms, 0)} alt={imageAlt(displayName, 'Students learning')} label="Add a real SouthGold classroom, pupils, or campus photograph from the CMS." tall /></div>
         </div>
       </section>
 
-      {/* SUMMARY STATS SECTION - Simple & Compact */}
-      <section className="bg-white dark:bg-slate-900 py-6 border-b border-slate-200 dark:border-slate-800/80">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
-            <div className="py-1">
-              <span className="block text-xl font-bold text-amber-600 dark:text-amber-500">Sangotedo</span>
-              <span className="text-[9px] uppercase font-bold text-slate-400 mt-0.5 tracking-wider block">Campus Site</span>
-            </div>
-            <div className="py-1 border-l border-slate-150 dark:border-slate-800">
-              <span className="block text-xl font-bold text-slate-900 dark:text-white">Dual Syllabus</span>
-              <span className="text-[9px] uppercase font-bold text-slate-400 mt-0.5 tracking-wider block">Curriculum Standard</span>
-            </div>
-            <div className="py-1 border-l border-slate-150 dark:border-slate-800">
-              <span className="block text-xl font-bold text-amber-600 dark:text-amber-500">100%</span>
-              <span className="text-[9px] uppercase font-bold text-slate-400 mt-0.5 tracking-wider block">Grade Integrity</span>
-            </div>
-            <div className="py-1 border-l border-slate-150 dark:border-slate-800">
-              <span className="block text-xl font-bold text-slate-900 dark:text-white">5 consoles</span>
-              <span className="text-[9px] uppercase font-bold text-slate-400 mt-0.5 tracking-wider block">Role Gateways</span>
-            </div>
+      <section className="bg-white py-16 dark:bg-slate-950">
+        <div className="mx-auto grid max-w-7xl gap-10 px-4 sm:px-6 lg:grid-cols-[0.75fr_1fr] lg:px-8">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.22em] text-[#9f7622]">SouthGold Schools</p>
+            <h2 className="mt-4 text-3xl font-extrabold text-[#07172f] dark:text-white">{cms.welcomeTitle || fallbackCms.welcomeTitle}</h2>
           </div>
+          <p className="text-base leading-8 text-slate-700 dark:text-slate-300">{cms.aboutDesc || fallbackCms.aboutDesc}</p>
         </div>
       </section>
 
-      {/* ABOUT THE COLLEGE - Concise layout */}
-      <section id="about" className="py-12 sm:py-16 bg-slate-50 dark:bg-slate-950 scroll-mt-2">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6">
-          <div className="flex flex-col md:flex-row items-center gap-8">
-            {/* Left Image */}
-            <div className="w-full md:w-1/2">
-              <img 
-                src={cms.gallery?.[0] || "https://images.unsplash.com/photo-1427504494785-3a9ca7044f45?w=500&auto=format&fit=crop&q=80"} 
-                alt="Our Main College Premises" 
-                className="rounded-2xl shadow-xs border border-slate-200 dark:border-slate-800 object-cover w-full h-[240px]"
-                referrerPolicy="no-referrer"
-              />
-            </div>
-
-            {/* Right side narrative */}
-            <div className="w-full md:w-1/2 space-y-4">
-              <span className="text-[9px] font-bold uppercase tracking-wider text-amber-600 bg-amber-50 dark:bg-amber-955/20 px-2.5 py-1 rounded-full">
-                Our Foundation
-              </span>
-              <h3 className="text-xl sm:text-2xl font-display font-extrabold text-slate-900 dark:text-slate-50 uppercase tracking-tight">
-                {cms.aboutTitle || 'Nurturing Character & Leading Minds'}
-              </h3>
-              <p className="text-xs text-slate-550 dark:text-slate-350 leading-relaxed font-normal">
-                {cms.aboutDesc || 'Located in Sangotedo, Lagos, we empower pupils with independent thinking, core confidence, and academic values to prepare them for global opportunities.'}
-              </p>
-              
-              <div className="space-y-3 pt-2">
-                <div className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
-                  <h5 className="font-bold text-[9px] uppercase tracking-wider text-amber-600 flex items-center gap-1.5">
-                    <Sparkles size={12} />
-                    Our Mission
-                  </h5>
-                  <p className="text-[11px] text-slate-650 dark:text-slate-350 mt-1 leading-relaxed">
-                    {cms.mission || 'To foster creative thinking, intellectual curiosity, and moral integrity in every student.'}
-                  </p>
-                </div>
-                <div className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
-                  <h5 className="font-bold text-[9px] uppercase tracking-wider text-[#2563eb] flex items-center gap-1.5">
-                    <Award size={12} />
-                    Our Vision
-                  </h5>
-                  <p className="text-[11px] text-slate-650 dark:text-slate-350 mt-1 leading-relaxed">
-                    {cms.vision || 'To be a premier educational institution recognized globally for academic leadership and character development.'}
-                  </p>
-                </div>
-              </div>
-            </div>
+      <section className="bg-[#f7f4ed] py-16">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="max-w-2xl">
+            <p className="text-xs font-bold uppercase tracking-[0.22em] text-[#9f7622]">Academic Stages</p>
+            <h2 className="mt-4 text-3xl font-extrabold text-[#07172f]">A clear path from early learning to confident scholarship</h2>
           </div>
-        </div>
-      </section>
-
-      {/* PRINCIPAL MESSAGE SECTION */}
-      <section className="py-12 sm:py-16 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800/60">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6">
-          <div className="flex flex-col md:flex-row items-center gap-8 bg-slate-50 dark:bg-slate-950/40 p-6 md:p-8 rounded-3xl border border-slate-150 dark:border-slate-850 shadow-xs">
-            <div className="w-28 h-28 md:w-36 md:h-36 rounded-2xl overflow-hidden border-2 border-amber-500 shrink-0 shadow-md">
-              <img 
-                src={cms.principalPhoto || "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=300&auto=format&fit=crop&q=80"} 
-                alt="Principal" 
-                className="w-full h-full object-cover"
-                referrerPolicy="no-referrer"
-              />
-            </div>
-            <div className="space-y-3">
-              <span className="text-[9px] font-bold uppercase tracking-wider text-amber-600 bg-amber-50 dark:bg-amber-955/20 px-2.5 py-1 rounded-full">
-                Word from the Principal
-              </span>
-              <h3 className="text-sm sm:text-base font-extrabold text-slate-900 dark:text-slate-50 uppercase tracking-tight">
-                {cms.principalName || 'Mrs. Olufunmilayo Fagbeyi'}
-              </h3>
-              <p className="text-xs text-slate-550 dark:text-slate-350 italic leading-relaxed font-semibold">
-                "{cms.principalMessage || 'Welcome to our community. At SouthGold, we believe that education is the key to unlocking every child’s potential. We invite you to partner with us in this journey.'}"
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* CAMPUS ACTIVITIES / LATEST HIGHLIGHTS */}
-      <section id="highlights" className="py-12 bg-white dark:bg-slate-900 border-t border-b border-slate-200 dark:border-slate-800/60 scroll-mt-2">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-xl mx-auto mb-8">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-[#2563eb] bg-blue-50 dark:bg-blue-950/20 px-3 py-1 rounded-full">
-              Latest Updates
-            </span>
-            <h2 className="text-xl sm:text-2xl font-display font-extrabold text-slate-900 dark:text-slate-50 uppercase tracking-tight mt-2">
-              Our School Activities
-            </h2>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {(activities && activities.length > 0 ? activities : [
-              {
-                id: 'act_1',
-                title: 'Summer Intensive Class 🌞',
-                badge: 'Admission',
-                desc: 'Algebra, language development, and elementary reasoning classes.',
-                imgUrl: 'https://images.unsplash.com/photo-1544717305-2782549b5136?w=400&auto=format&fit=crop&q=80',
-                footer: 'Ongoing enrollment'
-              },
-              {
-                id: 'act_2',
-                title: 'Exploring Computer Coding',
-                badge: 'Literacy',
-                desc: 'Practical computing sessions covering key logic and coding skills.',
-                imgUrl: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=400&auto=format&fit=crop&q=80',
-                footer: 'Computer Facility'
-              },
-              {
-                id: 'act_3',
-                title: 'Wellness & Hygiene',
-                badge: 'Wellness',
-                desc: 'Interactive hygiene seminar outlining proper diet and hygiene standard values.',
-                imgUrl: 'https://images.unsplash.com/photo-1576091160550-2173dba999ef?w=400&auto=format&fit=crop&q=80',
-                footer: 'Welfare Program'
-              },
-              {
-                id: 'act_4',
-                title: 'Cultural Day Festival',
-                badge: 'Culture',
-                desc: 'A vibrant exhibition of traditional garments, meals, and dances.',
-                imgUrl: 'https://images.unsplash.com/photo-1577896851231-70ef18881754?w=400&auto=format&fit=crop&q=80',
-                footer: 'Creative Event'
-              }
-            ]).map((act) => (
-              <button
-                type="button"
-                key={act.id}
-                onClick={() => setSelectedActivity(act)}
-                className="text-left bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden hover:border-amber-500/40 hover:shadow-md transition-all flex flex-col justify-between cursor-pointer"
-                id={`activity-${act.id}`}
-              >
-                <div>
-                  <img
-                    src={act.imgUrl || "https://images.unsplash.com/photo-1544717305-2782549b5136?w=400&auto=format&fit=crop&q=80"}
-                    alt={act.title}
-                    className="w-full h-40 object-cover"
-                    referrerPolicy="no-referrer"
-                  />
-                  <div className="p-5 space-y-2">
-                    <div className="flex items-center gap-1.5 text-[9px] font-black uppercase text-amber-600 tracking-wider">
-                      <span>{act.badge}</span>
-                    </div>
-                    <h4 className="font-extrabold text-xs sm:text-sm uppercase tracking-wide text-slate-900 dark:text-slate-100">
-                      {act.title}
-                    </h4>
-                    <p className="text-[11px] text-slate-500 leading-relaxed font-semibold line-clamp-2">
-                      {act.desc}
-                    </p>
-                    <span className="inline-block text-[10px] font-bold text-[#2563eb] uppercase tracking-wide">
-                      Read more &rarr;
-                    </span>
-                  </div>
+          <div className="mt-10 grid gap-6 lg:grid-cols-3">
+            {stageSummaries.map((stage, index) => (
+              <article key={stage.title} className="bg-white">
+                <div className="aspect-[4/3] overflow-hidden"><EditorialImage src={getImage(cms, index + 1)} alt={imageAlt(displayName, stage.title)} label={`Replace with a real ${stage.title} photograph.`} /></div>
+                <div className="p-6">
+                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#9f7622]">{stage.kicker}</p>
+                  <h3 className="mt-3 text-xl font-extrabold text-[#07172f]">{stage.title}</h3>
+                  <p className="mt-3 text-sm leading-7 text-slate-600">{stage.desc}</p>
+                  <button onClick={() => handleNavigate('/about')} className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-[#07172f] hover:text-[#9f7622]">Learn more <ArrowRight size={16} /></button>
                 </div>
-                {act.footer && (
-                  <div className="p-5 pt-0 border-t border-slate-150 dark:bg-slate-950/20 dark:border-slate-800/30 text-[10px] text-slate-430 font-bold">
-                    {act.footer}
-                  </div>
-                )}
-              </button>
+              </article>
             ))}
           </div>
-
         </div>
       </section>
 
-      {/* ACTIVITY DETAIL MODAL */}
-      {selectedActivity && (
-        <div
-          className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4 z-50"
-          onClick={() => setSelectedActivity(null)}
-        >
-          <div
-            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 w-full max-w-lg rounded-2xl shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="relative">
-              <img
-                src={selectedActivity.imgUrl || "https://images.unsplash.com/photo-1544717305-2782549b5136?w=800&auto=format&fit=crop&q=80"}
-                alt={selectedActivity.title}
-                className="w-full h-56 object-cover"
-                referrerPolicy="no-referrer"
-              />
-              <button
-                type="button"
-                onClick={() => setSelectedActivity(null)}
-                className="absolute top-3 right-3 bg-slate-950/60 hover:bg-slate-950/80 text-white rounded-full p-1.5 cursor-pointer"
-              >
-                <X size={16} />
-              </button>
-            </div>
-            <div className="p-6 space-y-3">
-              <span className="text-[9px] font-black uppercase text-amber-600 tracking-wider">
-                {selectedActivity.badge}
-              </span>
-              <h3 className="font-display font-extrabold text-lg text-slate-900 dark:text-slate-50 uppercase tracking-tight">
-                {selectedActivity.title}
-              </h3>
-              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed whitespace-pre-line">
-                {selectedActivity.content || selectedActivity.desc}
-              </p>
-              {selectedActivity.footer && (
-                <div className="pt-3 border-t border-slate-150 dark:border-slate-800 text-[10px] text-slate-430 font-bold">
-                  {selectedActivity.footer}
-                </div>
-              )}
+      <section className="bg-white py-16 dark:bg-slate-950">
+        <div className="mx-auto grid max-w-7xl gap-10 px-4 sm:px-6 lg:grid-cols-[0.7fr_1fr] lg:px-8">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.22em] text-[#9f7622]">Why SouthGold</p>
+            <h2 className="mt-4 text-3xl font-extrabold text-[#07172f] dark:text-white">A school experience built around the whole child</h2>
+          </div>
+          <div className="grid gap-x-8 gap-y-4 sm:grid-cols-2">
+            {strengths.map((item) => (
+              <div key={item} className="flex items-start gap-3 border-t border-slate-200 pt-4 dark:border-slate-800">
+                <Check size={18} className="mt-1 shrink-0 text-[#c99a2e]" />
+                <p className="font-semibold text-slate-800 dark:text-slate-200">{item}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="bg-[#07172f] py-16 text-white">
+        <div className="mx-auto grid max-w-7xl gap-10 px-4 sm:px-6 lg:grid-cols-2 lg:px-8">
+          <div className="overflow-hidden"><EditorialImage src={getImage(cms, 4)} alt={imageAlt(displayName, 'School activities')} label="Use a real image of ICT, science, art, sports, or school activities." /></div>
+          <div className="flex flex-col justify-center">
+            <p className="text-xs font-bold uppercase tracking-[0.22em] text-amber-300">Learning Experience</p>
+            <h2 className="mt-4 text-3xl font-extrabold">Lessons that connect knowledge with character</h2>
+            <p className="mt-5 text-base leading-8 text-slate-300">SouthGold's public content highlights classroom learning, ICT, creativity, practical activities, and school events. The site uses real CMS-managed images when administrators upload them.</p>
+            <div className="mt-8 grid gap-3 text-sm text-slate-200 sm:grid-cols-2">
+              {['Classroom learning', 'ICT', 'Creative arts', 'Sports', 'School events', 'Practical activities'].map((item) => <span key={item} className="border border-white/15 px-4 py-3">{item}</span>)}
             </div>
           </div>
         </div>
+      </section>
+
+      {cms.principalMessage && (
+        <section className="bg-white py-16 dark:bg-slate-950">
+          <div className="mx-auto grid max-w-5xl gap-8 px-4 sm:px-6 lg:grid-cols-[220px_1fr] lg:px-8">
+            <div className="overflow-hidden bg-slate-100"><EditorialImage src={cms.principalPhoto} alt={imageAlt(displayName, 'Principal')} label="Principal photograph placeholder." /></div>
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.22em] text-[#9f7622]">Principal's Message</p>
+              <blockquote className="mt-4 text-xl leading-9 text-slate-800 dark:text-slate-200">"{cms.principalMessage}"</blockquote>
+              {cms.principalName && <p className="mt-5 font-bold text-[#07172f] dark:text-white">{cms.principalName}</p>}
+            </div>
+          </div>
+        </section>
       )}
 
-      {/* NEWS / ANNOUNCEMENT DETAIL MODAL */}
-      {selectedBulletin && (
-        <div
-          className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4 z-50"
-          onClick={() => setSelectedBulletin(null)}
-        >
-          <div
-            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 w-full max-w-lg rounded-2xl shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="relative">
-              {selectedBulletin.image ? (
-                <img
-                  src={selectedBulletin.image}
-                  alt={selectedBulletin.title}
-                  className="w-full h-56 object-cover"
-                  referrerPolicy="no-referrer"
-                />
-              ) : null}
-              <button
-                type="button"
-                onClick={() => setSelectedBulletin(null)}
-                className={`absolute top-3 right-3 rounded-full p-1.5 cursor-pointer ${selectedBulletin.image ? 'bg-slate-950/60 hover:bg-slate-950/80 text-white' : 'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300'}`}
-              >
-                <X size={16} />
-              </button>
+      {(activities.length > 0 || recentNews.length > 0) && (
+        <section className="bg-[#f7f4ed] py-16">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.22em] text-[#9f7622]">Latest News / Activities</p>
+              <h2 className="mt-4 text-3xl font-extrabold text-[#07172f]">What is happening at SouthGold</h2>
             </div>
-            <div className="p-6 space-y-3">
-              <span className={`text-[9px] font-black uppercase tracking-wider ${selectedBulletin.kind === 'news' ? 'text-amber-600' : 'text-blue-600'}`}>
-                {selectedBulletin.kind === 'news' ? 'School News' : 'Announcement'}
-              </span>
-              <h3 className="font-display font-extrabold text-lg text-slate-900 dark:text-slate-50 uppercase tracking-tight">
-                {selectedBulletin.title}
-              </h3>
-              <span className="block text-[10px] font-bold text-slate-400">{selectedBulletin.date}</span>
-              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed whitespace-pre-line">
-                {selectedBulletin.content}
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* NEWS & ANNOUNCEMENTS BOARD */}
-      <section className="py-12 bg-slate-50 dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            {/* News Column */}
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 border-b pb-2 border-slate-200 dark:border-slate-800">
-                <div className="w-2 h-2 rounded-full bg-amber-500" />
-                <h3 className="font-display font-extrabold text-xs sm:text-sm uppercase tracking-wider text-slate-900 dark:text-slate-50">
-                  Latest School News
-                </h3>
-              </div>
-              <div className="space-y-4">
-                {cms.news && cms.news.length > 0 ? (
-                  cms.news.map((n: any, idx: number) => (
-                    <button
-                      type="button"
-                      key={n.id || idx}
-                      onClick={() => setSelectedBulletin({ kind: 'news', date: n.date, title: n.title, content: n.content, image: n.image })}
-                      className="w-full text-left p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-850 space-y-2 hover:border-amber-500/40 hover:shadow-md transition-all cursor-pointer"
-                    >
-                      {n.image && (
-                        <img src={n.image} alt={n.title} className="w-full h-36 object-cover rounded-xl" referrerPolicy="no-referrer" />
-                      )}
-                      <div className="space-y-1">
-                        <span className="text-[9px] font-bold text-slate-400">{n.date}</span>
-                        <h4 className="font-bold text-xs text-slate-900 dark:text-slate-100 uppercase">{n.title}</h4>
-                        <p className="text-[11px] text-slate-500 leading-relaxed font-semibold line-clamp-2">{n.content}</p>
-                        <span className="inline-block text-[10px] font-bold text-[#2563eb] uppercase tracking-wide">
-                          Read more &rarr;
-                        </span>
-                      </div>
-                    </button>
-                  ))
-                ) : (
-                  <p className="text-xs text-slate-400">No news published yet.</p>
-                )}
-              </div>
-            </div>
-
-            {/* Announcements Column */}
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 border-b pb-2 border-slate-200 dark:border-slate-800">
-                <div className="w-2 h-2 rounded-full bg-blue-500" />
-                <h3 className="font-display font-extrabold text-xs sm:text-sm uppercase tracking-wider text-slate-900 dark:text-slate-50">
-                  Important Announcements
-                </h3>
-              </div>
-              <div className="space-y-4">
-                {cms.announcements && cms.announcements.length > 0 ? (
-                  cms.announcements.map((a: any, idx: number) => (
-                    <button
-                      type="button"
-                      key={a.id || idx}
-                      onClick={() => setSelectedBulletin({ kind: 'announcement', date: a.date, title: a.title, content: a.content, image: a.image })}
-                      className="w-full text-left p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-850 border-l-4 border-l-blue-500 space-y-2 hover:shadow-md transition-all cursor-pointer"
-                    >
-                      {a.image && (
-                        <img src={a.image} alt={a.title} className="w-full h-36 object-cover rounded-xl" referrerPolicy="no-referrer" />
-                      )}
-                      <div className="space-y-1">
-                        <span className="text-[9px] font-bold text-slate-400">{a.date}</span>
-                        <h4 className="font-bold text-xs text-slate-900 dark:text-slate-100 uppercase">{a.title}</h4>
-                        <p className="text-[11px] text-slate-500 leading-relaxed font-semibold line-clamp-2">{a.content}</p>
-                        <span className="inline-block text-[10px] font-bold text-[#2563eb] uppercase tracking-wide">
-                          Read more &rarr;
-                        </span>
-                      </div>
-                    </button>
-                  ))
-                ) : (
-                  <p className="text-xs text-slate-400">No announcements published yet.</p>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* REAL TESTIMONIALS - Verified Parents Feedback */}
-      <section className="py-16 bg-slate-50 dark:bg-slate-950 border-b border-slate-205 dark:border-slate-800">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6">
-          <div className="text-center mb-10">
-            <span className="text-[11px] font-bold uppercase tracking-widest text-amber-600 dark:text-amber-400">
-              Community Voices
-            </span>
-            <h2 className="text-xl sm:text-2xl font-display font-bold text-slate-900 dark:text-slate-50 uppercase tracking-tight mt-1.5">
-              What Parents Are Saying About Us
-            </h2>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            
-            {/* Testimonial 1 */}
-            <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-150 dark:border-slate-805 shadow-xs space-y-4">
-              <p className="text-xs text-slate-550 dark:text-slate-300 leading-relaxed italic">
-                "Our experience with SouthGold Montessori School has been amazing. The dual syllabus is robust, 
-                and I am especially impressed by the continuous online reporting card console. I can log in, 
-                view my children's continuous assessment scores, and track payments easily from home."
-              </p>
-              <div className="flex items-center gap-3 pt-2">
-                <div className="w-9 h-9 bg-slate-200 dark:bg-slate-800 rounded-full flex items-center justify-center text-xs font-bold font-display uppercase tracking-wider text-slate-600 dark:text-slate-300">
-                  PA
-                </div>
-                <div>
-                  <h5 className="text-[11px] font-bold uppercase text-slate-800 dark:text-slate-200">Mrs. Patricia Adeleke</h5>
-                  <p className="text-[9px] text-slate-450 uppercase">Parent of Daniel & Miracle (Grade 1 & Nursery)</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Testimonial 2 */}
-            <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-150 dark:border-slate-805 shadow-xs space-y-4">
-              <p className="text-xs text-slate-550 dark:text-slate-300 leading-relaxed italic">
-                "Finding a secondary school that understands computer technology while delivering solid traditional morals 
-                was my prime selection criteria. The ICT computing laboratory training, combined with 
-                responsive administrative staff, is simply unparalleled. Highly recommended."
-              </p>
-              <div className="flex items-center gap-3 pt-2">
-                <div className="w-9 h-9 bg-slate-200 dark:bg-slate-800 rounded-full flex items-center justify-center text-xs font-bold font-display uppercase tracking-wider text-slate-600 dark:text-slate-300">
-                  OL
-                </div>
-                <div>
-                  <h5 className="text-[11px] font-bold uppercase text-slate-800 dark:text-slate-200">Mr. Tunde Oluwu</h5>
-                  <p className="text-[9px] text-slate-450 uppercase">Parent of Kemi (Grade 1 Student)</p>
-                </div>
-              </div>
-            </div>
-
-          </div>
-        </div>
-      </section>
-
-      {/* CAMPUS GALLERY */}
-      {cms.gallery && cms.gallery.length > 0 && (
-        <section className="py-12 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800/60">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center mb-8">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-[#2563eb] bg-blue-50 dark:bg-blue-950/20 px-3 py-1 rounded-full">
-                Our Campus
-              </span>
-              <h2 className="text-xl sm:text-2xl font-display font-extrabold text-slate-900 dark:text-slate-50 uppercase tracking-tight mt-2">
-                School Gallery
-              </h2>
-            </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {cms.gallery.map((imgUrl: string, idx: number) => (
-                <button
-                  type="button"
-                  key={idx}
-                  onClick={() => setSelectedGalleryIndex(idx)}
-                  className="aspect-video rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm hover:scale-[1.02] transition-transform cursor-pointer"
-                >
-                  <img src={imgUrl} alt={`Gallery ${idx + 1}`} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                </button>
+            <div className="mt-10 grid gap-6 lg:grid-cols-3">
+              {(activities.length ? activities.slice(0, 3) : recentNews).map((item: any, index: number) => (
+                <article key={item.id || item.title} className="bg-white">
+                  <div className="aspect-[4/3] overflow-hidden"><EditorialImage src={item.imgUrl || item.image || getImage(cms, index + 5)} alt={imageAlt(displayName, item.title)} label="Activity image placeholder." /></div>
+                  <div className="p-6">
+                    <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#9f7622]">{item.badge || item.date || 'School Update'}</p>
+                    <h3 className="mt-3 text-lg font-extrabold text-[#07172f]">{item.title}</h3>
+                    <p className="mt-3 text-sm leading-7 text-slate-600">{item.desc || item.content}</p>
+                    <button onClick={() => (item.desc ? setSelectedActivity(item) : setSelectedBulletin(item))} className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-[#07172f] hover:text-[#9f7622]">Read more <ArrowRight size={16} /></button>
+                  </div>
+                </article>
               ))}
             </div>
           </div>
         </section>
       )}
 
-      {/* GALLERY LIGHTBOX */}
-      {selectedGalleryIndex !== null && cms.gallery && cms.gallery[selectedGalleryIndex] && (
-        <div
-          className="fixed inset-0 bg-slate-950/80 backdrop-blur-xs flex items-center justify-center p-4 z-50"
-          onClick={() => setSelectedGalleryIndex(null)}
-        >
-          <button
-            type="button"
-            onClick={() => setSelectedGalleryIndex(null)}
-            className="absolute top-4 right-4 bg-white/10 hover:bg-white/20 text-white rounded-full p-2 cursor-pointer"
-          >
-            <X size={18} />
-          </button>
+      <section className="bg-white py-16 dark:bg-slate-950">
+        <div className="mx-auto max-w-5xl px-4 text-center sm:px-6 lg:px-8">
+          <p className="text-xs font-bold uppercase tracking-[0.22em] text-[#9f7622]">Admissions</p>
+          <h2 className="mt-4 text-3xl font-extrabold text-[#07172f] dark:text-white">Give your child the foundation to excel</h2>
+          <p className="mx-auto mt-5 max-w-2xl text-base leading-8 text-slate-700 dark:text-slate-300">{cms.admissionsDesc || fallbackCms.admissionsDesc}</p>
+          <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
+            <button onClick={() => handleNavigate('/admissions')} className="bg-[#c99a2e] px-6 py-3 text-sm font-bold text-[#07172f] transition hover:bg-[#b38928]">Start Admission</button>
+            <a href={`https://wa.me/${whatsappNumber}`} target="_blank" rel="noopener noreferrer" className="border border-[#07172f] px-6 py-3 text-sm font-bold text-[#07172f] transition hover:bg-[#07172f] hover:text-white dark:border-white dark:text-white">Speak With Us</a>
+          </div>
+        </div>
+      </section>
+    </>
+  );
 
-          {cms.gallery.length > 1 && (
-            <>
-              <button
-                type="button"
-                onClick={(e) => { e.stopPropagation(); setSelectedGalleryIndex((i) => (i === null ? i : (i - 1 + cms.gallery.length) % cms.gallery.length)); }}
-                className="absolute left-2 sm:left-6 top-1/2 -translate-y-1/2 bg-white/10 hover:bg-white/20 text-white rounded-full p-2 cursor-pointer"
-              >
-                <ArrowLeft size={18} />
-              </button>
-              <button
-                type="button"
-                onClick={(e) => { e.stopPropagation(); setSelectedGalleryIndex((i) => (i === null ? i : (i + 1) % cms.gallery.length)); }}
-                className="absolute right-2 sm:right-6 top-1/2 -translate-y-1/2 bg-white/10 hover:bg-white/20 text-white rounded-full p-2 cursor-pointer"
-              >
-                <ArrowRight size={18} />
-              </button>
-            </>
-          )}
+  const AboutPage = () => (
+    <>
+      <section className="bg-[#07172f] text-white">
+        <div className="mx-auto grid max-w-7xl gap-10 px-4 py-14 sm:px-6 lg:grid-cols-[0.85fr_1.15fr] lg:px-8">
+          <div className="flex flex-col justify-center">
+            <p className="text-xs font-bold uppercase tracking-[0.22em] text-amber-300">About & Academics</p>
+            <h1 className="mt-5 text-4xl font-extrabold leading-tight sm:text-5xl">About SouthGold Schools</h1>
+            <p className="mt-6 text-base leading-8 text-slate-300">{cms.aboutDesc || fallbackCms.aboutDesc}</p>
+          </div>
+          <div className="overflow-hidden"><EditorialImage src={getImage(cms, 1)} alt={imageAlt(displayName, 'School community')} label="Add a real campus or classroom photograph." /></div>
+        </div>
+      </section>
+      <section className="bg-white py-16 dark:bg-slate-950">
+        <div className="mx-auto grid max-w-7xl gap-10 px-4 sm:px-6 lg:grid-cols-3 lg:px-8">
+          <div><h2 className="text-3xl font-extrabold text-[#07172f] dark:text-white">School Story</h2></div>
+          <div className="space-y-6 text-base leading-8 text-slate-700 dark:text-slate-300 lg:col-span-2">
+            <p>{cms.aboutDesc || fallbackCms.aboutDesc}</p>
+            <p>{cms.welcomeDesc || fallbackCms.welcomeDesc}</p>
+          </div>
+        </div>
+      </section>
+      <section className="bg-[#f7f4ed] py-16">
+        <div className="mx-auto grid max-w-7xl gap-6 px-4 sm:px-6 lg:grid-cols-2 lg:px-8">
+          <div className="bg-white p-8"><h2 className="text-2xl font-extrabold text-[#07172f]">Mission</h2><p className="mt-4 leading-8 text-slate-700">{cms.mission || fallbackCms.mission}</p></div>
+          <div className="bg-white p-8"><h2 className="text-2xl font-extrabold text-[#07172f]">Vision</h2><p className="mt-4 leading-8 text-slate-700">{cms.vision || fallbackCms.vision}</p></div>
+        </div>
+      </section>
+      <section className="bg-white py-16 dark:bg-slate-950">
+        <div className="mx-auto grid max-w-7xl gap-10 px-4 sm:px-6 lg:grid-cols-[0.85fr_1.15fr] lg:px-8">
+          <div><p className="text-xs font-bold uppercase tracking-[0.22em] text-[#9f7622]">Educational Philosophy</p><h2 className="mt-4 text-3xl font-extrabold text-[#07172f] dark:text-white">Confident learners, thoughtful character, practical skills</h2></div>
+          <div className="space-y-5 text-base leading-8 text-slate-700 dark:text-slate-300">
+            <p>SouthGold's approach is grounded in attentive teaching, steady academic expectations, creativity, character development, digital awareness, and confidence-building.</p>
+            <p>Children are encouraged to ask questions, practise skills, work with others, and develop habits that support lifelong learning.</p>
+          </div>
+        </div>
+      </section>
+      <section className="bg-[#f7f4ed] py-16">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <p className="text-xs font-bold uppercase tracking-[0.22em] text-[#9f7622]">Academics</p>
+          <h2 className="mt-4 max-w-2xl text-3xl font-extrabold text-[#07172f]">Programmes for each stage of growth</h2>
+          <div className="mt-10 grid gap-6 lg:grid-cols-3">
+            {stageSummaries.map((stage) => <article key={stage.title} className="border-t-4 border-[#c99a2e] bg-white p-7"><h3 className="text-xl font-extrabold text-[#07172f]">{stage.title}</h3><p className="mt-4 text-sm leading-7 text-slate-700">{stage.desc}</p></article>)}
+          </div>
+          <div className="mt-10 grid gap-6 lg:grid-cols-2">
+            <div className="bg-white p-8"><h3 className="text-xl font-extrabold text-[#07172f]">Curriculum</h3><p className="mt-4 leading-8 text-slate-700">The project confirms Montessori, preschool, primary, and junior secondary public positioning. Specific curriculum claims should be edited by the school administrator in the CMS if more detail is required.</p></div>
+            <div className="bg-white p-8"><h3 className="flex items-center gap-3 text-xl font-extrabold text-[#07172f]"><Laptop size={22} /> ICT & Digital Learning</h3><p className="mt-4 leading-8 text-slate-700">Digital literacy is presented as part of SouthGold's learning priorities, supporting pupils with technology awareness and modern learning confidence.</p></div>
+          </div>
+        </div>
+      </section>
+      <section className="bg-white py-16 dark:bg-slate-950">
+        <div className="mx-auto grid max-w-7xl gap-10 px-4 sm:px-6 lg:grid-cols-2 lg:px-8">
+          <div className="overflow-hidden"><EditorialImage src={getImage(cms, 3)} alt={imageAlt(displayName, 'Beyond academics')} label="Use a real school activity or facilities image." /></div>
+          <div className="flex flex-col justify-center"><p className="text-xs font-bold uppercase tracking-[0.22em] text-[#9f7622]">Beyond Academics</p><h2 className="mt-4 text-3xl font-extrabold text-[#07172f] dark:text-white">Room for creativity, leadership, and discovery</h2><p className="mt-5 text-base leading-8 text-slate-700 dark:text-slate-300">The site reflects confirmed school activities such as sports, creative arts, events, practical learning, and excursions when these are supplied through the activities manager or CMS gallery.</p></div>
+        </div>
+      </section>
+    </>
+  );
 
-          <img
-            src={cms.gallery[selectedGalleryIndex]}
-            alt={`Gallery ${selectedGalleryIndex + 1}`}
-            className="max-w-full max-h-[85vh] object-contain rounded-lg"
-            referrerPolicy="no-referrer"
-            onClick={(e) => e.stopPropagation()}
-          />
+  const AdmissionsPage = () => (
+    <>
+      <section className="bg-[#f7f4ed]">
+        <div className="mx-auto grid max-w-7xl gap-10 px-4 py-14 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:px-8">
+          <div className="flex flex-col justify-center"><p className="text-xs font-bold uppercase tracking-[0.22em] text-[#9f7622]">Admissions & Contact</p><h1 className="mt-5 text-4xl font-extrabold leading-tight text-[#07172f] sm:text-5xl">Begin Your Child's Journey at SouthGold</h1><p className="mt-6 text-base leading-8 text-slate-700">{cms.admissionsDesc || fallbackCms.admissionsDesc}</p></div>
+          <div className="overflow-hidden"><EditorialImage src={getImage(cms, 2)} alt={imageAlt(displayName, 'Admissions')} label="Add a real admissions, pupils, or campus photograph." /></div>
+        </div>
+      </section>
+      <section className="bg-white py-16 dark:bg-slate-950">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="max-w-2xl"><p className="text-xs font-bold uppercase tracking-[0.22em] text-[#9f7622]">Admission Process</p><h2 className="mt-4 text-3xl font-extrabold text-[#07172f] dark:text-white">Simple steps, personal guidance</h2></div>
+          <div className="mt-10 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {admissionSteps.map((step, index) => <div key={step} className="border border-slate-200 p-6 dark:border-slate-800"><span className="text-sm font-extrabold text-[#c99a2e]">{String(index + 1).padStart(2, '0')}</span><h3 className="mt-3 font-bold text-[#07172f] dark:text-white">{step}</h3></div>)}
+          </div>
+        </div>
+      </section>
+      <section className="bg-[#f7f4ed] py-16">
+        <div className="mx-auto grid max-w-7xl gap-10 px-4 sm:px-6 lg:grid-cols-[0.75fr_1fr] lg:px-8">
+          <div><p className="text-xs font-bold uppercase tracking-[0.22em] text-[#9f7622]">Classes / Programmes</p><h2 className="mt-4 text-3xl font-extrabold text-[#07172f]">Available programmes</h2><p className="mt-5 leading-8 text-slate-700">Class lists are maintained from the school portal when available.</p></div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {(classes.length ? classes : stageSummaries.map((stage) => ({ classId: stage.title, stage: undefined }))).map((item) => <div key={item.classId} className="bg-white p-5"><p className="font-bold text-[#07172f]">{item.classId}</p>{item.stage && <p className="mt-1 text-sm text-slate-600">{item.stage}</p>}</div>)}
+          </div>
+        </div>
+      </section>
+      <section className="bg-white py-16 dark:bg-slate-950">
+        <div className="mx-auto grid max-w-7xl gap-10 px-4 sm:px-6 lg:grid-cols-[0.85fr_1.15fr] lg:px-8">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.22em] text-[#9f7622]">Send An Enquiry</p>
+            <h2 className="mt-4 text-3xl font-extrabold text-[#07172f] dark:text-white">Speak with admissions</h2>
+            <div className="mt-8 space-y-5 text-sm leading-6 text-slate-700 dark:text-slate-300">
+              <p className="flex gap-3"><Phone size={18} className="shrink-0 text-[#c99a2e]" /> <a href={`tel:${displayPhone.replace(/[^0-9+]/g, '')}`}>{displayPhone}</a></p>
+              <p className="flex gap-3"><Mail size={18} className="shrink-0 text-[#c99a2e]" /> <a href={`mailto:${displayEmail}`}>{displayEmail}</a></p>
+              <p className="flex gap-3"><MapPin size={18} className="shrink-0 text-[#c99a2e]" /> <a href={mapUrl} target="_blank" rel="noopener noreferrer">{displayAddress}</a></p>
+              <a href={`https://wa.me/${whatsappNumber}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 bg-emerald-600 px-5 py-3 font-bold text-white transition hover:bg-emerald-700">WhatsApp Admissions</a>
+            </div>
+          </div>
+          <div className="border border-slate-200 p-5 sm:p-8 dark:border-slate-800">
+            {contactSubmitted ? (
+              <div className="py-10 text-center">
+                <div className="mx-auto flex h-12 w-12 items-center justify-center bg-emerald-100 text-emerald-700"><Check size={22} /></div>
+                <h3 className="mt-5 text-xl font-extrabold text-[#07172f] dark:text-white">Thank you. Your enquiry has been received.</h3>
+                <p className="mx-auto mt-3 max-w-md text-sm leading-7 text-slate-600 dark:text-slate-300">The admissions team can now follow up from the school portal.</p>
+                <button onClick={() => setContactSubmitted(false)} className="mt-6 border border-[#07172f] px-5 py-3 text-sm font-bold text-[#07172f] dark:border-white dark:text-white">Send another enquiry</button>
+              </div>
+            ) : (
+              <form onSubmit={handleContactSubmit} className="space-y-5" noValidate>
+                {formError && <p className="border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">{formError}</p>}
+                <div className="grid gap-5 sm:grid-cols-2">
+                  <Field label="Parent / Guardian Name" required value={formState.parentName} onChange={(value) => updateForm('parentName', value)} />
+                  <Field label="Phone" required type="tel" value={formState.phone} onChange={(value) => updateForm('phone', value)} />
+                  <Field label="Email" required type="email" value={formState.email} onChange={(value) => updateForm('email', value)} />
+                  <Field label="Child's Name" required value={formState.childName} onChange={(value) => updateForm('childName', value)} />
+                  <Field label="Child's Age" required value={formState.childAge} onChange={(value) => updateForm('childAge', value)} />
+                  <div>
+                    <label className="mb-2 block text-xs font-bold uppercase tracking-[0.16em] text-slate-600 dark:text-slate-300">Class Applying For *</label>
+                    <input list="class-options" required value={formState.classApplyingFor} onChange={(e) => updateForm('classApplyingFor', e.target.value)} className="w-full border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-[#c99a2e] focus:ring-2 focus:ring-[#c99a2e]/20 dark:border-slate-700 dark:bg-slate-900 dark:text-white" />
+                    <datalist id="class-options">{(classes.length ? classes.map((item) => item.classId) : stageSummaries.map((stage) => stage.title)).map((item) => <option key={item} value={item} />)}</datalist>
+                  </div>
+                  <div>
+                    <label className="mb-2 block text-xs font-bold uppercase tracking-[0.16em] text-slate-600 dark:text-slate-300">Preferred Contact Method</label>
+                    <select value={formState.preferredContact} onChange={(e) => updateForm('preferredContact', e.target.value)} className="w-full border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-[#c99a2e] focus:ring-2 focus:ring-[#c99a2e]/20 dark:border-slate-700 dark:bg-slate-900 dark:text-white">
+                      <option>Phone call</option><option>WhatsApp</option><option>Email</option>
+                    </select>
+                  </div>
+                </div>
+                <div>
+                  <label className="mb-2 block text-xs font-bold uppercase tracking-[0.16em] text-slate-600 dark:text-slate-300">Message</label>
+                  <textarea rows={5} value={formState.message} onChange={(e) => updateForm('message', e.target.value)} className="w-full border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-[#c99a2e] focus:ring-2 focus:ring-[#c99a2e]/20 dark:border-slate-700 dark:bg-slate-900 dark:text-white" />
+                </div>
+                <button type="submit" disabled={contactLoading} className="inline-flex w-full items-center justify-center gap-2 bg-[#c99a2e] px-6 py-3 text-sm font-bold text-[#07172f] transition hover:bg-[#b38928] disabled:cursor-not-allowed disabled:opacity-70">{contactLoading ? 'Sending Enquiry...' : <><Send size={16} /> Send Enquiry</>}</button>
+              </form>
+            )}
+          </div>
+        </div>
+      </section>
+      <section className="bg-[#f7f4ed] py-16">
+        <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
+          <p className="text-xs font-bold uppercase tracking-[0.22em] text-[#9f7622]">FAQ</p>
+          <h2 className="mt-4 text-3xl font-extrabold text-[#07172f]">Admissions questions</h2>
+          <div className="mt-8 space-y-3">
+            {[
+              ['How do I start an admission enquiry?', 'Complete the enquiry form on this page or contact the school by phone, WhatsApp, or email.'],
+              ['Which classes are available?', classes.length ? 'Available classes are listed above from the school portal configuration.' : 'Administrators should update the class list in the portal so exact classes appear here.'],
+              ['Is an assessment required?', 'The school admissions team will confirm whether an assessment or interview applies to the child and class.'],
+            ].map(([question, answer]) => <details key={question} className="group bg-white p-5"><summary className="flex cursor-pointer list-none items-center justify-between gap-4 font-bold text-[#07172f]">{question}<ChevronDown size={18} className="transition group-open:rotate-180" /></summary><p className="mt-3 text-sm leading-7 text-slate-700">{answer}</p></details>)}
+          </div>
+        </div>
+      </section>
+    </>
+  );
 
-          {cms.gallery.length > 1 && (
-            <span className="absolute bottom-4 left-1/2 -translate-x-1/2 text-white/80 text-[11px] font-bold">
-              {selectedGalleryIndex + 1} / {cms.gallery.length}
-            </span>
-          )}
+  const LoginIndex = () => (
+    <main className="min-h-[calc(100vh-80px)] bg-[#f7f4ed] px-4 py-14 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-6xl text-center">
+        <p className="text-xs font-bold uppercase tracking-[0.22em] text-[#9f7622]">Secure Portal</p>
+        <h1 className="mt-4 text-4xl font-extrabold text-[#07172f]">Choose your portal</h1>
+        <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-slate-700">Select the correct access point for your role. Role isolation is enforced after login.</p>
+        <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-5">
+          {portalRolesConfig.map((item) => {
+            const Icon = item.icon;
+            return <button key={item.role} type="button" onClick={() => handleNavigate(ROLE_TO_PATH[item.role])} className="bg-white p-6 text-left transition hover:-translate-y-1 hover:shadow-lg"><Icon size={24} className="text-[#c99a2e]" /><p className="mt-5 text-lg font-extrabold text-[#07172f]">{item.title}</p><p className="mt-1 text-xs font-bold uppercase tracking-[0.16em] text-slate-500">{item.badge}</p><p className="mt-4 text-sm leading-6 text-slate-600">{item.desc}</p></button>;
+          })}
+        </div>
+      </div>
+    </main>
+  );
+
+  const RoleLogin = ({ role }: { role: UserRole }) => {
+    const roleConfig = portalRolesConfig.find((item) => item.role === role);
+    const Icon = roleConfig?.icon || ShieldCheck;
+    return (
+      <main className="flex min-h-[calc(100vh-80px)] items-center justify-center bg-[#f7f4ed] px-4 py-12">
+        <div className="w-full max-w-md bg-white p-6 shadow-xl sm:p-8">
+          <button type="button" onClick={() => handleNavigate('/login')} className="mb-8 inline-flex items-center gap-2 text-sm font-bold text-[#07172f] hover:text-[#9f7622]"><ArrowLeft size={16} /> Back to portals</button>
+          <div className="text-center"><div className="mx-auto flex h-14 w-14 items-center justify-center bg-[#07172f] text-[#c99a2e]"><Icon size={24} /></div><p className="mt-5 text-xs font-bold uppercase tracking-[0.22em] text-[#9f7622]">Secure Authorization</p><h1 className="mt-2 text-2xl font-extrabold text-[#07172f]">{roleConfig?.title || 'Portal'} Login</h1></div>
+          <form onSubmit={(e) => submitLogin(e, role)} className="mt-8 space-y-5">
+            {loginError && <p className="border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">{loginError}</p>}
+            <Field label="Email Address" required type="email" value={emailInput} onChange={setEmailInput} />
+            <Field label="Password" required type="password" value={passwordInput} onChange={setPasswordInput} />
+            <label className="flex items-center gap-3 text-sm font-semibold text-slate-700"><input type="checkbox" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} className="h-4 w-4 accent-[#c99a2e]" /> Remember me</label>
+            <button type="submit" disabled={loginLoading} className="inline-flex w-full items-center justify-center gap-2 bg-[#07172f] px-6 py-3 text-sm font-bold text-white transition hover:bg-[#10294e] disabled:opacity-70"><Lock size={16} /> {loginLoading ? 'Signing in...' : 'Sign in'}</button>
+          </form>
+        </div>
+      </main>
+    );
+  };
+
+  const activeRole = PATH_TO_ROLE[currentPath];
+
+  return (
+    <div className="min-h-screen bg-white font-sans text-slate-900 dark:bg-slate-950 dark:text-slate-100">
+      <JsonLd />
+      <PublicNav />
+      {currentPath === '/login' && <LoginIndex />}
+      {activeRole && <RoleLogin role={activeRole} />}
+      {!activeRole && currentPath === '/' && <HomePage />}
+      {!activeRole && currentPath === '/about' && <AboutPage />}
+      {!activeRole && currentPath === '/admissions' && <AdmissionsPage />}
+      {!activeRole && currentPath !== '/login' && <Footer />}
+
+      {(selectedActivity || selectedBulletin) && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/75 p-4" onClick={() => { setSelectedActivity(null); setSelectedBulletin(null); }}>
+          <div className="max-h-[90vh] w-full max-w-2xl overflow-auto bg-white p-6 shadow-2xl dark:bg-slate-900" onClick={(e) => e.stopPropagation()}>
+            <button type="button" onClick={() => { setSelectedActivity(null); setSelectedBulletin(null); }} className="ml-auto flex h-9 w-9 items-center justify-center border border-slate-200 dark:border-slate-700" aria-label="Close"><X size={18} /></button>
+            <p className="mt-2 text-xs font-bold uppercase tracking-[0.18em] text-[#9f7622]">{selectedActivity?.badge || selectedBulletin?.date || 'School Update'}</p>
+            <h2 className="mt-3 text-2xl font-extrabold text-[#07172f] dark:text-white">{selectedActivity?.title || selectedBulletin?.title}</h2>
+            <p className="mt-5 whitespace-pre-line text-sm leading-8 text-slate-700 dark:text-slate-300">{selectedActivity?.content || selectedActivity?.desc || selectedBulletin?.content}</p>
+          </div>
         </div>
       )}
 
-      {/* INQUIRIES & CAMPUS CONTACT INFORMATION - Fully compliant simulated contact form */}
-      <section id="contact" className="py-16 sm:py-20 bg-white dark:bg-slate-900 scroll-mt-6">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
-            
-            {/* Contact Guidelines Left */}
-            <div className="space-y-6">
-              <span className="text-[10px] font-black uppercase tracking-widest text-[#e11d48] bg-rose-50 dark:bg-rose-955/20 border border-rose-200/50 px-3.5 py-1 rounded-full block w-fit">
-                Admission Inquiries
-              </span>
-              
-              <h2 className="text-2xl sm:text-3xl font-display font-extrabold text-slate-900 dark:text-slate-50 uppercase tracking-tight">
-                Submit An Admission Ticket
-              </h2>
-              
-              <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed font-semibold">
-                Do you wish to learn more about the British-Nigerian curriculum values, affordable tuition breakdown, 
-                or the next campus entrance exams? Issue a continuous inquiry ticket below. Our academic admin desk 
-                registers replies within 24 hours.
-              </p>
-
-              {/* Direct Campus Parameters */}
-              <div className="space-y-4 pt-4 border-t border-slate-100 dark:border-slate-800 font-semibold text-slate-700 dark:text-slate-300 font-sans">
-                
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-850 flex items-center justify-center text-amber-600 shrink-0">
-                    <Phone size={14} />
-                  </div>
-                  <div>
-                    <h6 className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Registrar hotlines</h6>
-                    <p className="text-xs mt-0.5 font-bold text-slate-800 dark:text-slate-100">{schoolPhone || '07067742997, 08025951409'}</p>
-                  </div>
-                </div>
-
-                <a 
-                  href={`https://wa.me/${(schoolPhone || '07067742997').replace(/[^0-9]/g, '')}?text=Hello%20SouthGold%20Montessori%20School%21%20I%20am%20inquiring%20about%20admissions%2520and%2520class%2520enrollments.`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-3 p-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 hover:bg-emerald-500/10 dark:bg-emerald-500/10 dark:hover:bg-emerald-500/15 transition-all group cursor-pointer"
-                  id="direct-whatsapp-campus-card"
-                >
-                  <div className="w-9 h-9 rounded-xl bg-emerald-500 text-white flex items-center justify-center shrink-0 shadow-sm shadow-emerald-500/20">
-                    <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24" aria-hidden="true">
-                      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L0 24l6.335-1.662c1.746.953 3.71 1.454 5.709 1.455h.008c6.548 0 11.884-5.33 11.887-11.892A11.78 11.78 0 0022.01 3.51" />
-                    </svg>
-                  </div>
-                  <div>
-                    <h6 className="text-[10px] uppercase font-bold text-emerald-600 dark:text-emerald-400 tracking-wider">Direct WhatsApp Chat</h6>
-                    <p className="text-xs mt-0.5 font-bold text-slate-800 dark:text-slate-100 flex items-center gap-1.5 group-hover:text-emerald-600 dark:group-hover:text-emerald-300 transition-colors">
-                      Chat directly with Admin Desk <span className="inline-block animate-pulse w-2 h-2 rounded-full bg-emerald-500"></span>
-                    </p>
-                  </div>
-                </a>
-
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-850 flex items-center justify-center text-amber-600 shrink-0">
-                    <Mail size={14} />
-                  </div>
-                  <div>
-                    <h6 className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Official inbox</h6>
-                    <p className="text-xs mt-0.5 font-bold text-slate-800 dark:text-slate-100">{schoolEmail || 'southgoldmontessorischools@gmail.com'}</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-850 flex items-center justify-center text-amber-600 shrink-0">
-                    <MapPin size={14} />
-                  </div>
-                  <div>
-                    <h6 className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Primary campus grounds</h6>
-                    <p className="text-xs mt-0.5 font-bold text-slate-800 dark:text-slate-100">{schoolAddress || '3, Fagbeyi Olusi Ige Street, Hopeville Estate, Haruna Bus-Stop, Sangotedo, Lagos. Nigeria'}</p>
-                  </div>
-                </div>
-
-              </div>
-            </div>
-
-            {/* Inquiries submission board */}
-            <div className="bg-slate-50 dark:bg-slate-950 p-6 sm:p-8 rounded-2xl border border-slate-200 dark:border-slate-800">
-              {contactSubmitted ? (
-                <div className="text-center py-10 space-y-4">
-                  <div className="w-12 h-12 bg-emerald-100 dark:bg-emerald-950/40 rounded-full flex items-center justify-center text-emerald-600 mx-auto">
-                    <Check size={20} />
-                  </div>
-                  <h4 className="text-base font-bold text-slate-900 dark:text-white uppercase tracking-tight">
-                    Inquiry Lodged Correctly!
-                  </h4>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed max-w-sm mx-auto">
-                    Thank you, <strong>{contactName}</strong>. SouthGold Academic Desk has logged your ticket. 
-                    An admissions team will reach you on <strong>{contactEmail}</strong>.
-                  </p>
-
-                  {/* Dispatching indicators & routing alerts */}
-                  <div className="bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-xl max-w-sm mx-auto space-y-2 mt-4 text-left">
-                    <span className="text-[10px] uppercase font-black text-slate-455 dark:text-slate-400 tracking-wider block border-b border-slate-200 dark:border-slate-800/80 pb-1.5 mb-2">📋 Notification Dispatch Logs:</span>
-                    <div className="flex items-center gap-2 text-[10.5px] font-semibold text-emerald-600 dark:text-emerald-400">
-                      <span className="flex-shrink-0 w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                      <span>Support Ticket logged in the admin portal</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-[10.5px] font-semibold text-emerald-600 dark:text-emerald-400">
-                      <span className="flex-shrink-0 w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                      <span>Alert sent to Super Admin dashboard</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-[10.5px] font-semibold text-emerald-600 dark:text-emerald-400">
-                      <span className="flex-shrink-0 w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                      <span>Alert sent to School Admin dashboard</span>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => {
-                      setContactSubmitted(false);
-                      setContactName('');
-                      setContactEmail('');
-                      setContactMessage('');
-                    }}
-                    className="mt-4 bg-[#ff7e42] hover:bg-[#e66c34] text-white font-bold text-[10px] uppercase tracking-wider py-2 px-5 rounded-lg transition-all cursor-pointer"
-                  >
-                    Submit Another Inquiry
-                  </button>
-                </div>
-              ) : (
-                <form onSubmit={handleContactSubmit} className="space-y-4">
-                  <h4 className="font-extrabold text-sm text-slate-855 dark:text-slate-100 uppercase tracking-widest pl-1">
-                    Connect With Admissions Desk
-                  </h4>
-                  
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-[9px] uppercase font-bold tracking-wider text-slate-500 block mb-1">Your Full Name *</label>
-                      <input 
-                        type="text" 
-                        required
-                        value={contactName}
-                        onChange={(e) => setContactName(e.target.value)}
-                        placeholder="e.g. Robert Ade"
-                        className="w-full bg-white dark:bg-slate-900 text-xs py-2.5 px-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500/20 text-slate-850 dark:text-slate-50"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[9px] uppercase font-bold tracking-wider text-slate-500 block mb-1">Email Coordinates *</label>
-                      <input 
-                        type="email" 
-                        required
-                        value={contactEmail}
-                        onChange={(e) => setContactEmail(e.target.value)}
-                        placeholder="parent@example.com"
-                        className="w-full bg-white dark:bg-slate-900 text-xs py-2.5 px-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500/20 text-slate-850 dark:text-slate-50"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="text-[9px] uppercase font-bold tracking-wider text-slate-500 block mb-1">Inquiry category</label>
-                    <select 
-                      value={contactSubject}
-                      onChange={(e) => setContactSubject(e.target.value)}
-                      className="w-full bg-white dark:bg-slate-900 text-xs py-2.5 px-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500/20 text-slate-850 dark:text-slate-50"
-                    >
-                      <option value="Admission Inquiry">Admission Fees & Procedures</option>
-                      <option value="Tuition Payments">Tuition Installments & Receipts</option>
-                      <option value="Academic Performance">Academic Performance & Grades</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="text-[9px] uppercase font-bold tracking-wider text-slate-500 block mb-1">Detailed Inquiry Message *</label>
-                    <textarea 
-                      required
-                      rows={3}
-                      value={contactMessage}
-                      onChange={(e) => setContactMessage(e.target.value)}
-                      placeholder="List down whatever curriculum or admission queries you have..."
-                      className="w-full bg-white dark:bg-slate-900 text-xs py-2.5 px-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500/20 text-slate-850 dark:text-slate-50"
-                    />
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={contactLoading}
-                    className="w-full bg-[#ff7e42] hover:bg-[#e66c34] text-white font-bold text-xs uppercase py-3 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2"
-                  >
-                    {contactLoading ? (
-                      <span>Logging Inquiry Ticket...</span>
-                    ) : (
-                      <>
-                        <Send size={12} />
-                        <span>Log Inquiry Ticket</span>
-                      </>
-                    )}
-                  </button>
-                </form>
-              )}
-            </div>
-
-          </div>
-
-        </div>
-      </section>
-
-      {/* FOOTER - Classy, academic traditional style with no redundant clutter */}
-      <footer className="bg-slate-950 text-slate-400 pt-16 pb-8 border-t border-slate-805">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-6">
-          
-          <h2 className="text-xl font-display font-extrabold text-white tracking-widest leading-none">
-            {schoolName ? schoolName.split(' ')[0] : 'SOUTHGOLD'} <span className="text-amber-500">{schoolName ? schoolName.split(' ').slice(1).join(' ') : 'MONTESSORI SCHOOL'}</span>
-          </h2>
-          
-          <p className="max-w-xl mx-auto text-xs sm:text-sm text-slate-300 leading-relaxed font-semibold">
-            {cms.aboutDesc || 'Delivering sound, globalised curriculum paradigms. Formulating student developmental growth and preparing pupils for lifelong success.'}
-          </p>
-
-          <div className="flex justify-center gap-6 py-2">
-            {cms.facebook && (
-              <a href={cms.facebook} target="_blank" rel="noopener noreferrer" className="hover:text-amber-500 text-xs font-bold uppercase tracking-wider transition-colors">Facebook</a>
-            )}
-            {cms.instagram && (
-              <a href={cms.instagram} target="_blank" rel="noopener noreferrer" className="hover:text-amber-500 text-xs font-bold uppercase tracking-wider transition-colors">Instagram</a>
-            )}
-            {cms.youtube && (
-              <a href={cms.youtube} target="_blank" rel="noopener noreferrer" className="hover:text-amber-500 text-xs font-bold uppercase tracking-wider transition-colors">YouTube</a>
-            )}
-            {cms.website && (
-              <a href={cms.website} target="_blank" rel="noopener noreferrer" className="hover:text-amber-500 text-xs font-bold uppercase tracking-wider transition-colors">Website</a>
-            )}
-          </div>
-
-          <div className="pt-8 border-t border-slate-830 text-[10px] text-slate-500 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <p>© 2026 {schoolName || 'SouthGold Montessori School'}. All rights reserved. Registered under standard primary academic regulations.</p>
-            <div className="flex gap-4 font-semibold uppercase tracking-wider text-[9px]">
-              <a href="#privacy" className="hover:underline">Privacy Regulation</a>
-              <a href="#terms" className="hover:underline">Terms of Use</a>
-            </div>
-          </div>
-
-        </div>
-      </footer>
-
-      {/* Floating WhatsApp Quick-Connect Widget */}
-      <a
-        href={`https://wa.me/${(cms.whatsapp || '2347067742997').replace(/[^0-9]/g, '')}?text=Hello%20SouthGold%20Montessori%20School%21%20I%20am%20inquiring%20about%2520admissions%2520and%2520class%2520enrollments.`}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="fixed bottom-6 right-6 z-50 flex items-center gap-2.5 bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-white px-4 py-3 rounded-full shadow-lg hover:shadow-xl transition-all hover:scale-105 active:scale-95 group font-sans border border-emerald-400/20 cursor-pointer text-xs font-bold uppercase tracking-wider"
-        id="floating-whatsapp-badge"
-        title="Chat with SouthGold Registrar on WhatsApp"
-      >
-        <span className="relative flex h-3.5 w-3.5">
-          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-slate-100 opacity-60"></span>
-          <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-emerald-100"></span>
-        </span>
-        <svg className="w-4.5 h-4.5 fill-current shrink-0" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L0 24l6.335-1.662c1.746.953 3.71 1.454 5.709 1.455h.008c6.548 0 11.884-5.33 11.887-11.892A11.78 11.78 0 0022.01 3.51" />
-        </svg>
-        <span className="hidden sm:inline">WhatsApp Chat</span>
-        <span className="inline sm:hidden">WhatsApp</span>
-      </a>
-
+      {!activeRole && currentPath !== '/login' && <a href={`https://wa.me/${whatsappNumber}?text=Hello%20SouthGold%20Schools.%20I%20am%20inquiring%20about%20admissions.`} target="_blank" rel="noopener noreferrer" className="fixed bottom-5 right-5 z-50 bg-emerald-600 px-4 py-3 text-sm font-bold text-white shadow-lg transition hover:bg-emerald-700">WhatsApp</a>}
     </div>
   );
 }

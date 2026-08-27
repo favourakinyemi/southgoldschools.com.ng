@@ -47,11 +47,11 @@ export const metadata: Metadata = {
 
 const structuredData = {
   '@context': 'https://schema.org',
-  '@type': 'School',
+  '@type': 'EducationalOrganization',
   name: SITE_NAME,
   url: SITE_URL,
   description: DESCRIPTION,
-  telephone: '+234 803 123 4567',
+  telephone: '07067742997, 08025951409',
   email: 'southgoldmontessorischools@gmail.com',
   address: {
     '@type': 'PostalAddress',
