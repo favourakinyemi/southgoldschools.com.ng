@@ -1,9 +1,13 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '../../../../src/server/db';
+import { requireRole } from '../../../../src/server/routeAuth';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: Request) {
+  const auth = await requireRole(request, 'SUPER_ADMIN', 'SCHOOL_ADMIN');
+  if (auth instanceof NextResponse) return auth;
+
   try {
     const { passportBase64, fileName } = await request.json();
     if (!passportBase64) return NextResponse.json({ error: 'passportBase64 payload is required' }, { status: 400 });

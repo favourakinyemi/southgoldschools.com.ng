@@ -1,7 +1,13 @@
 import { supabase } from './db';
 
 const SUPER_ADMIN_EMAIL = 'southgold@gmail.com';
-const SUPER_ADMIN_PASSWORD = 'Southgold1234';
+
+function requireConfiguredPassword(value: string | undefined, envName: string) {
+  if (!value) {
+    throw new Error(`${envName} is not configured. Set it in the server environment before creating or resetting users.`);
+  }
+  return value;
+}
 
 export interface AuthUser {
   id: string;
@@ -197,7 +203,7 @@ export async function ensureAppUserExists(input: {
     try {
       const { data: authData, error: authError } = await supabase.auth.admin.createUser({
         email: input.email,
-        password: input.password || '1234',
+        password: input.password || requireConfiguredPassword(process.env.DEFAULT_PORTAL_USER_PASSWORD, 'DEFAULT_PORTAL_USER_PASSWORD'),
         email_confirm: true,
         user_metadata: { full_name: input.fullName, role: input.role },
       });
@@ -338,11 +344,13 @@ export async function ensureAppUserExists(input: {
   return { id: userId, email: input.email, role: input.role };
 }
 
-export async function resetPasswordToDefault(email: string, defaultPassword = '1234') {
+export async function resetPasswordToDefault(email: string, defaultPassword?: string) {
+  const resetPassword =
+    defaultPassword || requireConfiguredPassword(process.env.STAFF_PASSWORD_RESET_DEFAULT, 'STAFF_PASSWORD_RESET_DEFAULT');
   const listData: any = (await supabase.auth.admin.listUsers()).data;
   const existing = listData?.users?.find((u: any) => u.email === email);
   if (!existing) throw new Error('No auth account found for this email');
-  const { error } = await supabase.auth.admin.updateUserById(existing.id, { password: defaultPassword });
+  const { error } = await supabase.auth.admin.updateUserById(existing.id, { password: resetPassword });
   if (error) throw new Error(error.message);
   return true;
 }
@@ -392,7 +400,7 @@ export async function ensureSuperAdmin() {
     } else {
       const { data: authData, error: authError } = await supabase.auth.admin.createUser({
         email: SUPER_ADMIN_EMAIL,
-        password: SUPER_ADMIN_PASSWORD,
+        password: requireConfiguredPassword(process.env.SUPER_ADMIN_BOOTSTRAP_PASSWORD, 'SUPER_ADMIN_BOOTSTRAP_PASSWORD'),
         email_confirm: true,
         user_metadata: { full_name: 'SouthGold Super Admin', role: 'SUPER_ADMIN' },
       });
@@ -611,7 +619,7 @@ export async function onboardStudent(input: {
       try {
         const { data: authData, error: authErr } = await supabase.auth.admin.createUser({
           email: parentEmail,
-          password: '1234',
+          password: requireConfiguredPassword(process.env.DEFAULT_PORTAL_USER_PASSWORD, 'DEFAULT_PORTAL_USER_PASSWORD'),
           email_confirm: true,
           user_metadata: { full_name: s.parentName, role: 'PARENT' },
         });
@@ -681,7 +689,7 @@ export async function onboardStudent(input: {
       try {
         const { data: authData, error: authErr } = await supabase.auth.admin.createUser({
           email: studentEmail,
-          password: '1234',
+          password: requireConfiguredPassword(process.env.DEFAULT_PORTAL_USER_PASSWORD, 'DEFAULT_PORTAL_USER_PASSWORD'),
           email_confirm: true,
           user_metadata: { full_name: `${s.firstName} ${s.lastName}`, role: 'STUDENT' },
         });
@@ -820,4 +828,3 @@ export async function onboardStudent(input: {
     throw error;
   }
 }
-

@@ -517,12 +517,10 @@ export async function getDbSnapshot(user?: any) {
   let teachersList = (teachers.data || []).map(mapTeacherFromDb);
   let resultsList = (results.data || []).map(mapResultFromDb);
   
-  let earlyYearsResultsList: any[] = [];
   if (earlyYearsResults.error) {
-    console.warn('[Supabase] early_years_results table query failed (likely table not created yet), returning empty array:', earlyYearsResults.error.message);
-  } else {
-    earlyYearsResultsList = (earlyYearsResults.data || []).map(mapEarlyYearsResultFromDb);
+    throw earlyYearsResults.error;
   }
+  let earlyYearsResultsList = (earlyYearsResults.data || []).map(mapEarlyYearsResultFromDb);
 
   let attendanceList = (attendance.data || []).map(mapAttendanceFromDb);
   let notificationsList = (notifications.data || []).map(mapNotificationFromDb);

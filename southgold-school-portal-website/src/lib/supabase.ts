@@ -1,7 +1,14 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = 'https://bkrnnfybboiotvtpscmt.supabase.co';
-const supabaseAnonKey = 'sb_publishable_jYVX5_4v1FOr9LjuMCnrXA_TWhmdJsB';
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabasePublishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+
+if (!supabaseUrl || !supabasePublishableKey) {
+  throw new Error(
+    'Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY. ' +
+    'Set both public Supabase variables before starting the portal.'
+  );
+}
 
 const REMEMBER_ME_KEY = 'sg_remember_me';
 
@@ -52,6 +59,6 @@ const conditionalStorage = {
   },
 };
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+export const supabase = createClient(supabaseUrl, supabasePublishableKey, {
   auth: { storage: conditionalStorage },
 });

@@ -84,9 +84,9 @@ Every route is `export const dynamic = 'force-dynamic'` and reads/writes Supabas
 - The token is stored **both** client-side (in `localStorage` or `sessionStorage`, depending on the "Remember me" choice) **and** server-side as an httpOnly `sb-access-token` cookie (set by `POST /api/auth/session`), so API routes can authenticate the request without the client having to attach a header.
 - Roles: `SUPER_ADMIN`, `SCHOOL_ADMIN`, `TEACHER`, `PARENT`, `STUDENT` — stored on the `users` table and checked per-route via `requireRole()`.
 
-### Onboarding & default passwords
-- New Staff Admin/Teacher/Parent/Student accounts (created by an admin from the portal) are provisioned with a default password of **`1234`**.
-- The default Super Admin (`southgold@gmail.com` / `Southgold1234`) is created idempotently, either by `npm run setup-admin` or by hitting `POST /api/auth/super-admin/init`.
+### Onboarding & temporary passwords
+- New Staff Admin/Teacher/Parent/Student accounts created by an admin are provisioned with the server-side `DEFAULT_PORTAL_USER_PASSWORD`.
+- The default Super Admin email is created idempotently by `npm run setup-admin` using `SUPER_ADMIN_BOOTSTRAP_PASSWORD`. The protected `POST /api/auth/super-admin/init` route is restricted to existing Super Admins.
 - All accounts use Supabase Auth directly (hashed, never stored in plain text). Accounts with `can_change_password` set can change their password from the profile menu after logging in.
 
 ### A note on caching

@@ -630,7 +630,7 @@ export default function TeacherPortal({
   };
 
   const handleResetPassword = async (email: string) => {
-    if (!window.confirm(`Are you sure you want to reset password to default (1234) for ${email}?`)) return;
+    if (!window.confirm(`Are you sure you want to reset this user's password to the configured temporary password for ${email}?`)) return;
     try {
       const res = await fetch('/api/auth/reset-password', {
         method: 'POST',
@@ -638,7 +638,7 @@ export default function TeacherPortal({
         body: JSON.stringify({ email }),
       });
       if (!res.ok) throw new Error('Failed to reset password');
-      alert(`Password successfully reset to default "1234" for ${email}`);
+      alert(`Password successfully reset to the configured temporary password for ${email}.`);
     } catch (err: any) {
       alert(err.message);
     }
@@ -1803,7 +1803,7 @@ export default function TeacherPortal({
                           <button
                             onClick={() => handleResetPassword(sa.email)}
                             className="p-1 px-2 text-[10px] font-bold text-slate-600 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-300 rounded transition-all"
-                            title="Reset password to 1234"
+                              title="Reset password"
                           >
                             Reset PWD
                           </button>
@@ -1879,7 +1879,7 @@ export default function TeacherPortal({
                               <button
                                 onClick={() => handleResetPassword(pa.email)}
                                 className="p-1 px-2 text-[10px] font-bold text-slate-600 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-300 rounded transition-all"
-                                title="Reset password to 1234"
+                              title="Reset password"
                               >
                                 Reset PWD
                               </button>
@@ -1945,7 +1945,7 @@ export default function TeacherPortal({
                           <button
                             onClick={() => handleResetPassword(tch.email)}
                             className="p-1 px-2 text-[10px] font-bold text-slate-600 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-300 rounded transition-all"
-                            title="Reset password to 1234"
+                              title="Reset password"
                           >
                             Reset PWD
                           </button>

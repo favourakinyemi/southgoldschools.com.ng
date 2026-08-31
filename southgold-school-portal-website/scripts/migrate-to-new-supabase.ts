@@ -5,9 +5,8 @@ import { createClient } from '@supabase/supabase-js';
 // One-time migration: old Supabase project -> new Supabase project.
 // Copies every table's data, every Storage file, and recreates every Auth
 // account (Supabase doesn't allow copying password hashes between
-// projects, so every migrated account gets the app's existing default
-// password of '1234' -- or 'Southgold1234' for the Super Admin -- and
-// will need to sign in and change it).
+// projects, so every migrated account gets the temporary passwords provided
+// through environment variables and will need to sign in and change them).
 //
 // Prerequisites:
 // 1. All 14 files in supabase/migrations/ already applied to the NEW
@@ -45,9 +44,16 @@ if (!NEW_URL || !NEW_KEY) {
 const oldDb = createClient(OLD_URL, OLD_KEY);
 const newDb = createClient(NEW_URL, NEW_KEY);
 
-const DEFAULT_PASSWORD = '1234';
+const DEFAULT_PASSWORD = process.env.DEFAULT_PORTAL_USER_PASSWORD;
 const SUPER_ADMIN_EMAIL = 'southgold@gmail.com';
-const SUPER_ADMIN_PASSWORD = 'Southgold1234';
+const SUPER_ADMIN_PASSWORD = process.env.SUPER_ADMIN_BOOTSTRAP_PASSWORD;
+
+if (!DEFAULT_PASSWORD || !SUPER_ADMIN_PASSWORD) {
+  console.error(
+    'DEFAULT_PORTAL_USER_PASSWORD and SUPER_ADMIN_BOOTSTRAP_PASSWORD must be set in the environment.'
+  );
+  process.exit(1);
+}
 
 // Tables with no foreign keys into other app tables -- copy first, in any order.
 const INDEPENDENT_TABLES = ['subjects', 'sessions', 'configurations', 'cms_content', 'notifications', 'tickets', 'activities'];
