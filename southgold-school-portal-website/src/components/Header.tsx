@@ -4,10 +4,7 @@ import {
   Sun, 
   Moon, 
   Calendar, 
-  User, 
   Bell, 
-  ShieldAlert,
-  ChevronDown
 } from 'lucide-react';
 import { UserRole, SchoolTerm } from '../types';
 
@@ -57,9 +54,9 @@ export default function Header({
   const getRoleBadgeColor = () => {
     switch (currentRole) {
       case 'SUPER_ADMIN':
-        return 'bg-purple-100 text-purple-800 border-purple-200 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800';
+        return 'bg-portal-heading text-white border-portal-heading dark:bg-white/10 dark:text-white dark:border-white/10';
       case 'SCHOOL_ADMIN':
-        return 'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800';
+        return 'bg-blue-50 text-portal-primary border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800';
       case 'TEACHER':
         return 'bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800';
       case 'PARENT':
@@ -88,64 +85,81 @@ export default function Header({
     }
   };
 
+  const getPageTitle = () => {
+    switch (currentRole) {
+      case 'SUPER_ADMIN':
+      case 'SCHOOL_ADMIN':
+        return 'School Operations';
+      case 'TEACHER':
+        return 'Teaching Workspace';
+      case 'PARENT':
+        return 'Family Portal';
+      case 'STUDENT':
+        return 'Student Portal';
+      default:
+        return 'Portal';
+    }
+  };
+
   return (
-    <header className="sticky top-0 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-6 py-4 flex items-center justify-between z-30 transition-colors duration-200">
+    <header className="sticky top-0 bg-white/95 dark:bg-slate-950/95 border-b border-portal-border dark:border-slate-800 px-4 sm:px-6 py-3.5 flex items-center justify-between gap-4 z-30 transition-colors duration-200 backdrop-blur">
       
       {/* Left side: Hamburger (Mobile) + School title visual */}
       <div className="flex items-center gap-4">
         <button
           onClick={() => onSetSidebarOpen(true)}
-          className="p-2 -ml-2 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-800 lg:hidden focus:outline-none"
+          className="p-2 -ml-2 rounded-md text-portal-muted hover:text-portal-heading hover:bg-slate-100 dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-800 lg:hidden focus:outline-none focus:ring-2 focus:ring-portal-focus"
+          aria-label="Open navigation"
         >
           <Menu size={20} />
         </button>
 
-        <div className="hidden sm:flex items-center gap-2">
-          <Calendar className="text-blue-600 dark:text-blue-400" size={16} />
-          <div className="flex flex-col md:flex-row md:items-center gap-1 md:gap-3">
-            <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-              Active: {activeSessionName}
-            </span>
-            <span className="hidden md:inline text-slate-300 dark:text-slate-700">|</span>
-            <div className="flex items-center gap-1.5 bg-blue-50 text-blue-700 dark:bg-blue-950/20 dark:text-blue-300 px-2 py-0.5 rounded text-[11px] font-semibold border border-blue-100/50 dark:border-blue-900/30">
-              <span className="w-1.5 h-1.5 bg-blue-600 rounded-full animate-pulse" />
-              {activeTerm}
-            </div>
-          </div>
+        <div>
+          <p className="text-[11px] font-semibold text-portal-muted dark:text-slate-400">Dashboard</p>
+          <h1 className="text-base sm:text-lg font-extrabold text-portal-heading dark:text-white leading-tight">{getPageTitle()}</h1>
         </div>
       </div>
 
       {/* Right side: Session Fast configuration + Theme Toggle + User Status */}
-      <div className="flex items-center gap-3 sm:gap-4">
+      <div className="flex items-center gap-2 sm:gap-3">
         
         {/* Fast Session & Term Quick Switch for Admins */}
         {(currentRole === 'SCHOOL_ADMIN' || currentRole === 'SUPER_ADMIN') && (
-          <div className="hidden md:flex items-center gap-2 bg-slate-50 dark:bg-slate-800/50 p-1.5 rounded-lg border border-slate-200 dark:border-slate-800">
+          <div className="hidden md:flex items-center gap-2 bg-portal-elevated dark:bg-slate-900 p-1.5 rounded-md border border-portal-border dark:border-slate-800">
+            <Calendar className="text-portal-primary dark:text-blue-400 ml-1" size={15} />
             {/* Session dropdown */}
             <select
               value={sessions.find(s => s.name === activeSessionName)?.id || ''}
               onChange={(e) => onSwitchSession(e.target.value)}
-              className="bg-transparent text-[11px] font-medium text-slate-700 dark:text-slate-300 focus:outline-none border-0 cursor-pointer"
+              className="bg-transparent text-xs font-semibold text-slate-700 dark:text-slate-300 focus:outline-none border-0 cursor-pointer"
               title="Switch Active Session"
             >
               {sessions.map((s) => (
                 <option key={s.id} value={s.id} className="dark:bg-slate-900">
-                  Sess: {s.name}
+                  {s.name}
                 </option>
               ))}
             </select>
-            <span className="text-slate-300 dark:text-slate-800">|</span>
+            <span className="text-slate-300 dark:text-slate-700">|</span>
             {/* Term dropdown */}
             <select
               value={activeTerm}
               onChange={(e) => onSwitchTerm(e.target.value as SchoolTerm)}
-              className="bg-transparent text-[11px] font-medium text-slate-700 dark:text-slate-300 focus:outline-none border-0 cursor-pointer"
+              className="bg-transparent text-xs font-semibold text-slate-700 dark:text-slate-300 focus:outline-none border-0 cursor-pointer"
               title="Switch Active Term"
             >
-              <option value="First Term" className="dark:bg-slate-900">1st Term</option>
-              <option value="Second Term" className="dark:bg-slate-900">2nd Term</option>
-              <option value="Third Term" className="dark:bg-slate-900">3rd Term</option>
+              <option value="First Term" className="dark:bg-slate-900">First Term</option>
+              <option value="Second Term" className="dark:bg-slate-900">Second Term</option>
+              <option value="Third Term" className="dark:bg-slate-900">Third Term</option>
             </select>
+          </div>
+        )}
+
+        {(currentRole !== 'SCHOOL_ADMIN' && currentRole !== 'SUPER_ADMIN') && (
+          <div className="hidden md:flex items-center gap-2 rounded-md border border-portal-border dark:border-slate-800 bg-portal-elevated dark:bg-slate-900 px-3 py-2">
+            <Calendar className="text-portal-primary dark:text-blue-400" size={15} />
+            <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">{activeSessionName}</span>
+            <span className="text-xs font-semibold text-portal-primary dark:text-blue-300">{activeTerm}</span>
           </div>
         )}
 
@@ -155,7 +169,7 @@ export default function Header({
         <div className="relative">
           <button
             onClick={() => setShowNotifDropdown(!showNotifDropdown)}
-            className="p-2 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-800 dark:text-slate-400 dark:hover:text-blue-400 dark:hover:bg-slate-800 transition-colors relative cursor-pointer"
+            className="p-2 rounded-md text-portal-muted hover:bg-slate-100 hover:text-portal-heading dark:text-slate-400 dark:hover:text-blue-400 dark:hover:bg-slate-800 transition-colors relative cursor-pointer focus:outline-none focus:ring-2 focus:ring-portal-focus"
             aria-label="Notifications"
             title="Notifications Panel"
           >
@@ -168,9 +182,9 @@ export default function Header({
           </button>
 
           {showNotifDropdown && (
-            <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl z-50 overflow-hidden text-xs">
-              <div className="p-3 border-b border-slate-150 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-850">
-                <span className="font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-200">School Alerts</span>
+            <div className="absolute right-0 mt-2 w-80 max-w-[calc(100vw-2rem)] bg-white dark:bg-slate-900 border border-portal-border dark:border-slate-800 rounded-lg shadow-xl z-50 overflow-hidden text-xs">
+              <div className="p-3 border-b border-slate-150 dark:border-slate-800 flex justify-between items-center bg-portal-elevated dark:bg-slate-850">
+                <span className="font-extrabold text-slate-700 dark:text-slate-200">School Alerts</span>
                 {unreadCount > 0 && (
                   <span className="bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 px-2 py-0.5 rounded-full text-[9px] font-bold">
                     {unreadCount} New
@@ -220,7 +234,7 @@ export default function Header({
         {/* Dark/Light mode toggle */}
         <button
           onClick={onToggleTheme}
-          className="p-2 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-800 dark:text-slate-400 dark:hover:text-blue-400 dark:hover:bg-slate-800 transition-colors"
+          className="p-2 rounded-md text-portal-muted hover:bg-slate-100 hover:text-portal-heading dark:text-slate-400 dark:hover:text-blue-400 dark:hover:bg-slate-800 transition-colors focus:outline-none focus:ring-2 focus:ring-portal-focus"
           aria-label="Toggle theme"
           title="Toggle Color Theme"
         >
@@ -228,7 +242,7 @@ export default function Header({
         </button>
 
         {/* Role Badge Indicator */}
-        <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-semibold uppercase tracking-wider ${getRoleBadgeColor()}`}>
+        <div className={`hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border text-xs font-semibold ${getRoleBadgeColor()}`}>
           <span className="w-1.5 h-1.5 rounded-full bg-current" />
           <span>{getRoleDisplayName()}</span>
         </div>

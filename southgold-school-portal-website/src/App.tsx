@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { supabase, setRememberMe, isRememberMeEnabled } from './lib/supabase';
+import { CalendarDays } from 'lucide-react';
 import { 
   Student, 
   Teacher, 
@@ -901,7 +902,7 @@ export default function App({ initialCms }: { initialCms?: any }) {
 
   return (
     <div className={darkTheme ? 'dark' : ''}>
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex transition-colors duration-200">
+      <div className="min-h-screen bg-portal-bg dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex transition-colors duration-200">
         
         {/* Core Sidebar column */}
         <Sidebar
@@ -935,18 +936,24 @@ export default function App({ initialCms }: { initialCms?: any }) {
             userEmail={userEmail}
           />
 
-          <main className="flex-1 p-6 md:p-8 max-w-7xl w-full mx-auto space-y-6">
+          <main className="flex-1 p-4 sm:p-6 md:p-8 max-w-7xl w-full mx-auto space-y-6">
             
             {/* Display Term Boundaries banner inside each view */}
-            <div className="bg-blue-50 border border-blue-200 dark:bg-blue-950/25 dark:border-blue-900/50 rounded-xl p-4 flex items-center justify-between text-xs font-semibold text-blue-700 dark:text-blue-300 shadow-xs">
-              <span className="flex items-center gap-2">
-                <span>🔔</span>
-                <span>
-                  {activeTerm} academic boundaries: Resumption date {config?.resumptionDate ? new Date(config.resumptionDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : 'TBD'}. Closing date {config?.closingDate ? new Date(config.closingDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : 'TBD'}.
+            <div className="bg-white dark:bg-slate-900 border border-portal-border dark:border-slate-800 rounded-lg p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
+              <div className="flex items-start gap-3">
+                <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-blue-50 text-portal-primary dark:bg-blue-950/30 dark:text-blue-300">
+                  <CalendarDays size={18} />
                 </span>
-              </span>
-              <span className="text-[10px] bg-blue-100 dark:bg-blue-900/40 px-2.5 py-0.5 rounded uppercase font-bold tracking-wider hidden sm:inline">
-                Calendar Schedule
+                <div>
+                  <p className="text-sm font-bold text-portal-heading dark:text-slate-100">{activeTerm} Academic Calendar</p>
+                  <p className="mt-1 text-xs leading-5 text-portal-muted dark:text-slate-400">
+                    Resumption date: {config?.resumptionDate ? new Date(config.resumptionDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : 'TBD'}.
+                    {' '}Closing date: {config?.closingDate ? new Date(config.closingDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : 'TBD'}.
+                  </p>
+                </div>
+              </div>
+              <span className="self-start sm:self-center text-[11px] bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-md font-bold text-slate-600 dark:text-slate-300">
+                {activeSessionName}
               </span>
             </div>
 
