@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { BookOpen, Plus, Shield, Check, Info, Lock, BookMarked, Layers, Search, AlertCircle, FileSpreadsheet, UserCheck, Edit, Trash2 } from 'lucide-react';
 import { Subject, UserRole, Teacher, Student, AssessmentItem } from '../types';
+import { Alert } from './shared';
 
 interface ClassSubjectManagerProps {
   currentRole: UserRole;
@@ -709,7 +710,7 @@ export default function ClassSubjectManager({
       {/* Banner message */}
       {successMsg && (
         <div className="bg-emerald-50 border border-emerald-200 dark:bg-emerald-950/20 dark:border-emerald-900/40 p-3.5 rounded-xl text-xs font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-2 shadow-xs transition-all animate-bounce">
-          <span>✨</span>
+          <Check size={14} />
           <span>{successMsg}</span>
         </div>
       )}
@@ -735,7 +736,7 @@ export default function ClassSubjectManager({
             <Lock className="w-4 h-4 text-slate-400 shrink-0" />
             <div className="text-[10px] text-slate-500 font-semibold">
               <span className="block text-slate-800 dark:text-slate-200 font-bold uppercase tracking-wider">Read-Only View</span>
-              Only registered Administrators are licensed to alter mappings.
+              Only registered Administrators can alter mappings.
             </div>
           </div>
         ) : (
@@ -1190,7 +1191,7 @@ export default function ClassSubjectManager({
                     <p className="text-[11px] text-slate-550 dark:text-slate-400 leading-relaxed">
                       {isAdmin 
                         ? "Click 'Assign Subjects' beside any class to safely map their curriculum combinatorics." 
-                        : "Administrators utilize this panel to map custom subjects to respective term classrooms."}
+                        : "Administrators use this panel to map subjects to the appropriate term classrooms."}
                     </p>
                   </div>
                 </div>

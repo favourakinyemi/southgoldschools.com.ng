@@ -1,8 +1,6 @@
 import React, { useState } from 'react';
 import { 
   Plus, 
-  Search, 
-  Filter, 
   Edit, 
   UserPlus, 
   Trash, 
@@ -13,9 +11,11 @@ import {
   ArrowUpCircle,
   UserCheck,
   ArrowRightLeft,
-  Upload
+  Upload,
+  Users
 } from 'lucide-react';
 import { Student, Parent, Subject } from '../types';
+import { Alert, Card, DataTable, EmptyState, IconButton, PageHeader, SearchInput, StatusBadge } from './shared';
 
 interface StudentManagerProps {
   students: Student[];
@@ -433,86 +433,80 @@ export default function StudentManager({
   return (
     <div className="space-y-6">
       
-      {/* Dynamic Status Notifications */}
+      {/* Success Notification */}
       {message && (
-        <div className={`p-3.5 rounded-lg text-xs font-semibold flex items-center gap-2 shadow-sm animate-fade-in ${
-          message.type === 'success' ? 'bg-emerald-50 text-emerald-800 border border-emerald-200 dark:bg-emerald-950/30' : 'bg-slate-50 text-slate-800'
-        }`}>
-          <Check size={14} />
+        <Alert variant={message.type === 'success' ? 'success' : 'neutral'} icon={<Check size={14} />} className="animate-fade-in">
           <span>{message.text}</span>
-        </div>
+        </Alert>
       )}
 
-      {/* Profile controls Header bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">Pupils Register</h3>
-          <p className="text-xs text-slate-400">Total Enrolled on register: {students.length}</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={handlePromoteBatch}
-            className="flex items-center gap-1.5 border border-blue-600 hover:bg-blue-50 text-blue-600 dark:text-blue-400 dark:hover:bg-blue-950/20 px-3.5 py-1.8 rounded-lg text-xs font-semibold tracking-wide transition-all"
-            title="Promote all listed students"
-          >
-            <ArrowUpCircle size={14} />
-            <span>Bulk Promote Grade</span>
-          </button>
-
-          <button
-            onClick={() => setShowImportModal(true)}
-            className="flex items-center gap-1.5 border border-indigo-600 hover:bg-indigo-50 text-indigo-600 dark:text-indigo-400 dark:hover:bg-indigo-950/20 px-3.5 py-1.8 rounded-lg text-xs font-semibold tracking-wide transition-all cursor-pointer font-display"
-            title="Import pupils register in bulk"
-          >
-            <Upload size={14} />
-            <span>Bulk Import</span>
-          </button>
-          
-          <button
-            onClick={handleOpenAddForm}
-            className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-2 rounded-lg text-xs flex items-center gap-1.5 shadow-sm transition-colors"
-          >
-            <Plus size={14} />
-            <span>Admit Student</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Filter Options */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 flex flex-col md:flex-row items-center gap-4">
-        <div className="relative flex-1 w-full">
-          <span className="absolute inset-y-0 left-3 flex items-center text-slate-400">
-            <Search size={16} />
-          </span>
-          <input
-            type="text"
-            placeholder="Search student name or admission ID..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-slate-50 dark:bg-slate-800 text-xs py-2.5 pl-10 pr-4 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 text-slate-700 dark:text-slate-200 border-0"
-          />
-        </div>
-
-        <div className="flex items-center gap-3 w-full md:w-auto">
-          <div className="flex items-center gap-2 flex-1 md:flex-none">
-            <Filter size={14} className="text-slate-400 hidden sm:inline" />
-            <select
-              value={selectedClass}
-              onChange={(e) => setSelectedClass(e.target.value)}
-              className="bg-slate-50 dark:bg-slate-800 text-xs py-2 px-3 rounded-lg focus:outline-none border-0 text-slate-700 dark:text-slate-300 w-full sm:w-36 cursor-pointer"
+      {/* Page Header with Actions */}
+      <PageHeader
+        title="Student Directory"
+        description={`Manage enrolled pupils and student records (${students.length} total)`}
+        icon={<Users size={20} />}
+        actions={
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handlePromoteBatch}
+              className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold border border-portal-primary text-portal-primary dark:border-blue-400 dark:text-blue-400 hover:bg-portal-primary/5 dark:hover:bg-blue-950/20 rounded-lg transition-colors"
             >
-              <option value="">All Grades</option>
-              {classes.map(cls => (
-                <option key={cls} value={cls}>{cls}</option>
-              ))}
-            </select>
+              <ArrowUpCircle size={14} />
+              <span>Bulk Promote</span>
+            </button>
+            <button
+              onClick={() => setShowImportModal(true)}
+              className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold border border-portal-primary text-portal-primary dark:border-blue-400 dark:text-blue-400 hover:bg-portal-primary/5 dark:hover:bg-blue-950/20 rounded-lg transition-colors"
+            >
+              <Upload size={14} />
+              <span>Bulk Import</span>
+            </button>
+            <button
+              onClick={handleOpenAddForm}
+              className="flex items-center gap-1.5 px-4 py-2 bg-portal-primary hover:bg-portal-primary-hover text-white text-xs font-semibold rounded-lg shadow-sm transition-colors"
+            >
+              <Plus size={14} />
+              <span>Add Student</span>
+            </button>
+          </div>
+        }
+      />
+
+      {/* Filters Card */}
+      <Card>
+        <div className="p-4 space-y-3">
+          <div className="flex flex-col gap-3 md:flex-row md:items-end md:gap-4">
+            <div className="flex-1">
+              <label className="text-xs font-semibold text-portal-heading dark:text-slate-200 block mb-2">
+                Search Student
+              </label>
+              <SearchInput
+                placeholder="Search by name or admission ID..."
+                value={searchQuery}
+                onChange={setSearchQuery}
+              />
+            </div>
+            <div className="w-full md:w-48">
+              <label className="text-xs font-semibold text-portal-heading dark:text-slate-200 block mb-2">
+                Filter by Class
+              </label>
+              <select
+                value={selectedClass}
+                onChange={(e) => setSelectedClass(e.target.value)}
+                className="w-full px-3 py-2.5 text-xs border border-portal-border dark:border-slate-700 rounded-lg bg-white dark:bg-slate-950 text-portal-heading dark:text-slate-100 focus:border-portal-primary focus:ring-1 focus:ring-portal-focus transition-colors"
+              >
+                <option value="">All Classes</option>
+                {classes.map(cls => (
+                  <option key={cls} value={cls}>{cls}</option>
+                ))}
+              </select>
+            </div>
           </div>
         </div>
-      </div>
+      </Card>
 
       {/* Students Data Grid Table */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-xs">
-        <div className="overflow-x-auto">
+      <DataTable>
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-slate-50 dark:bg-slate-850 border-b border-slate-200 dark:border-slate-800 text-slate-400 font-bold uppercase text-[10px] tracking-wider">
@@ -568,47 +562,37 @@ export default function StudentManager({
                         </div>
                       </td>
                       <td className="py-3.5 px-4">
-                        <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                          student.status === 'Active' 
-                            ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300' 
-                            : 'bg-rose-100 text-rose-800 dark:bg-rose-950/40 dark:text-rose-300'
-                        }`}>
-                          <span className={`w-1.5 h-1.5 rounded-full ${student.status === 'Active' ? 'bg-emerald-500' : 'bg-rose-500'}`} />
-                          {student.status}
-                        </span>
+                        <StatusBadge status={student.status} />
                       </td>
                       <td className="py-3.5 px-4 text-right">
                         <div className="flex items-center justify-end gap-1.5">
-                          <button
+                          <IconButton
                             onClick={() => handleOpenEditForm(student)}
-                            className="p-1 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 rounded hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                            title="Edit Profile"
+                            label="Edit profile"
+                            variant="primary"
                           >
                             <Edit size={14} />
-                          </button>
-                          <button
+                          </IconButton>
+                          <IconButton
                             onClick={() => handleOpenMoveModal(student)}
-                            className="p-1 text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 rounded hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                            title="Move Class / Transfer"
+                            label="Move class or transfer"
                           >
                             <ArrowRightLeft size={14} />
-                          </button>
-                          <button
+                          </IconButton>
+                          <IconButton
                             onClick={() => handleToggleStatus(student.id)}
-                            className={`p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors ${
-                              student.status === 'Active' ? 'text-slate-400 hover:text-rose-500' : 'text-slate-400 hover:text-emerald-500'
-                            }`}
-                            title={student.status === 'Active' ? 'Suspend Student' : 'Activate Student'}
+                            label={student.status === 'Active' ? 'Suspend student' : 'Activate student'}
+                            variant={student.status === 'Active' ? 'danger' : 'primary'}
                           >
                             {student.status === 'Active' ? <UserX size={14} /> : <UserCheck size={14} />}
-                          </button>
-                          <button
+                          </IconButton>
+                          <IconButton
                             onClick={() => handleDeleteStudent(student.id)}
-                            className="p-1 text-slate-400 hover:text-red-600 dark:hover:text-red-400 rounded hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                            title="Delete Student Permanently"
+                            label="Delete student permanently"
+                            variant="danger"
                           >
                             <Trash size={14} />
-                          </button>
+                          </IconButton>
                         </div>
                       </td>
                     </tr>
@@ -616,15 +600,18 @@ export default function StudentManager({
                 })
               ) : (
                 <tr>
-                  <td colSpan={7} className="py-8 text-center text-slate-400 italic">
-                    No student records matched the current active search filter query.
+                  <td colSpan={7} className="p-6">
+                    <EmptyState
+                      icon={<Users size={28} />}
+                      title="No students found"
+                      description="No student records match the current search or class filter."
+                    />
                   </td>
                 </tr>
               )}
             </tbody>
           </table>
-        </div>
-      </div>
+      </DataTable>
 
       {/* Admit/Edit Student Full Dialogue Modal */}
       {isFormOpen && (

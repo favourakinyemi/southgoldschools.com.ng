@@ -23,6 +23,7 @@ import {
 import { Student, ResultRecord, SchoolTerm, Subject, UserRole, Teacher, SchoolConfigState } from '../types';
 import ParentStudentResultViewer from './ParentStudentResultViewer';
 import ReportCardPrintout from './ReportCardPrintout';
+import { Alert, PageHeader, Tabs } from './shared';
 
 const unpackScores = (r: ResultRecord) => {
   const ca1 = r.testScore || 0;
@@ -847,7 +848,7 @@ export default function ResultProcessor({
   const handlePrintDocument = () => {
     const overallStatus = getOverallReportStatus(targetStudentResults);
     if (overallStatus !== 'PUBLISHED') {
-      showNotice("Security Gate: This report card is under review. Reports can only be printed or downloaded once the status is PUBLISHED by the School Authority.");
+      showNotice("This report card is under review. Reports can only be printed or downloaded once the status is PUBLISHED by the School Authority.");
       return;
     }
     try {
@@ -883,43 +884,34 @@ export default function ResultProcessor({
     return (
       <div className="space-y-6">
         {notif && (
-          <div className="p-3 bg-emerald-50 text-emerald-800 border border-emerald-250 dark:bg-emerald-950/40 dark:text-emerald-300 rounded-lg text-xs font-semibold flex items-center gap-2">
-            <Check size={14} />
-            <span>{notif}</span>
-          </div>
+          <Alert variant="success" icon={<Check size={14} />}>{notif}</Alert>
         )}
+
+        <PageHeader
+          title="Result Processing"
+          description="Review class rosters, manage terminal scores, and publish approved reports for parents and students."
+          icon={<Award className="w-5 h-5" />}
+          actions={isAdminOrSuper ? (
+            <button
+              onClick={handleOpenConfigModal}
+              className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 shadow-xs transition-all hover:border-indigo-300 hover:text-indigo-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-indigo-700 dark:hover:text-indigo-300"
+            >
+              <Sliders size={14} />
+              Configure Scoring
+            </button>
+          ) : null}
+        />
 
         {/* Dynamic sub-navigation for Admins/Supers */}
         {isAdminOrSuper && (
-          <div className="flex border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-xl p-1 gap-1.5 shadow-3xs">
-            <button
-              onClick={() => setProcessorSubTab('DIRECTORY')}
-              className={`py-2 px-5 text-xs font-black rounded-lg transition-all cursor-pointer ${
-                processorSubTab === 'DIRECTORY'
-                  ? 'bg-indigo-600 text-white shadow-sm'
-                  : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800'
-              }`}
-            >
-              Class Roster Directory
-            </button>
-            <button
-              onClick={() => setProcessorSubTab('APPROVAL_DASHBOARD')}
-              className={`py-2 px-5 text-xs font-black rounded-lg transition-all cursor-pointer flex items-center gap-2 ${
-                processorSubTab === 'APPROVAL_DASHBOARD'
-                  ? 'bg-indigo-600 text-white shadow-sm'
-                  : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800'
-              }`}
-            >
-              <span>Workflow Approval Dashboard</span>
-              <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-black ${
-                processorSubTab === 'APPROVAL_DASHBOARD'
-                  ? 'bg-indigo-800 text-white'
-                  : 'bg-rose-105 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400'
-              }`}>
-                {pendingSubmissionsCount}
-              </span>
-            </button>
-          </div>
+          <Tabs
+            items={[
+              { id: 'DIRECTORY', label: 'Class Roster Directory', icon: <List size={14} /> },
+              { id: 'APPROVAL_DASHBOARD', label: 'Workflow Approval Dashboard', count: pendingSubmissionsCount, icon: <Check size={14} /> }
+            ]}
+            active={processorSubTab}
+            onChange={(id) => setProcessorSubTab(id)}
+          />
         )}
 
         {processorSubTab === 'APPROVAL_DASHBOARD' && isAdminOrSuper ? (
@@ -927,7 +919,7 @@ export default function ResultProcessor({
             <div className="pb-4 border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div>
                 <h3 className="text-xs font-black text-slate-800 dark:text-slate-100 uppercase tracking-widest flex items-center gap-2">
-                  <span className="p-1 bg-indigo-50 text-indigo-600 dark:bg-indigo-950/20 dark:text-indigo-400 rounded">🏆</span>
+                  <Award className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
                   <span>Terminal Results Approval Workflow</span>
                 </h3>
                 <p className="text-[11px] text-slate-400 mt-1 font-medium">
@@ -1044,7 +1036,8 @@ export default function ResultProcessor({
                                 }}
                                 className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-1.5 px-3 rounded-lg text-[10px] cursor-pointer shadow-3xs flex items-center gap-1"
                               >
-                                🔍 Review Workflow
+                                <FileText size={12} />
+                                Review Workflow
                               </button>
                             </div>
                           </td>
@@ -1056,7 +1049,7 @@ export default function ResultProcessor({
               </table>
             </div>
 
-            {/* Magnificent Interactive Review Drawer/Modal */}
+            {/* Interactive review modal */}
             {isReviewModalOpen && selectedApprovalToReview && (
               <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 overflow-y-auto">
                 <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-2xl w-full shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col my-8">
@@ -1278,7 +1271,7 @@ export default function ResultProcessor({
 
                   {/* Footer */}
                   <div className="p-4 bg-slate-50 dark:bg-slate-950 border-t border-slate-200 dark:border-slate-800 flex justify-between items-center text-[10px] text-slate-450">
-                    <span>Database-Backed Workflow Engine</span>
+                  <span>Workflow Engine</span>
                     <button
                       onClick={() => setIsReviewModalOpen(false)}
                       className="bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-300 font-bold py-1.5 px-4 rounded-lg cursor-pointer"
@@ -1416,7 +1409,8 @@ export default function ResultProcessor({
           onClick={() => setSelectedClassForProcessing(null)}
           className="inline-flex items-center gap-1.5 text-xs text-indigo-650 dark:text-indigo-400 hover:underline font-black cursor-pointer transition-all"
         >
-          ← Back to Class Directory
+          <ArrowLeft size={14} />
+          Back to Class Directory
         </button>
         <span className="text-[10.5px] font-black text-slate-400 uppercase tracking-widest bg-slate-50 dark:bg-slate-855 py-1 px-2.5 rounded-lg">
           Currently Processing: <strong className="text-slate-700 dark:text-slate-200">{selectedClass}</strong>
@@ -1425,10 +1419,7 @@ export default function ResultProcessor({
       
       {/* Visual top notification tracker */}
       {notif && (
-        <div className="p-3 bg-emerald-50 text-emerald-800 border border-emerald-250 dark:bg-emerald-950/40 dark:text-emerald-300 rounded-lg text-xs font-semibold flex items-center gap-2">
-          <Check size={14} />
-          <span>{notif}</span>
-        </div>
+        <Alert variant="success" icon={<Check size={14} />}>{notif}</Alert>
       )}
 
       {/* ----------------- ADMIN/SUPER CONFIGURATION HEADER ----------------- */}
@@ -1844,17 +1835,13 @@ export default function ResultProcessor({
             </button>
           </div>
 
-          {/* Iframe sandbox printing instruction banner */}
+          {/* Print notice */}
           {showPrintNotice && (
             <div className="no-print mx-4 sm:mx-6 mt-4 p-3.5 bg-indigo-50 border border-indigo-200 dark:bg-slate-800/80 dark:border-slate-700 rounded-xl text-xs text-indigo-950 dark:text-slate-200 flex gap-3 items-start shadow-xs relative">
-              <span className="text-sm select-none">💡</span>
               <div className="space-y-1 pr-6">
-                <p className="font-extrabold text-[11.5px] text-indigo-900 dark:text-indigo-400">Viewing inside AI Studio's iframe preview?</p>
+                <p className="font-extrabold text-[11.5px] text-indigo-900 dark:text-indigo-400">Print dialog did not open?</p>
                 <p className="leading-relaxed opacity-90 text-[10.5px]">
-                  Browsers protect security by restricting print dialogue commands (`window.print()`) inside sandboxed preview iframes.
-                </p>
-                <p className="leading-relaxed font-bold mt-1 text-[11px]">
-                  For a flawless PDF copy or full paper printout, click the <span className="underline">"Open App" or external link icon</span> at the very top-right corner of your preview panel to run the app in a **new top-level tab**, then click <strong>Print/Download PDF report</strong>!
+                  Open the portal in a full browser tab and use Print/Download PDF again.
                 </p>
               </div>
               <button 
@@ -1862,7 +1849,7 @@ export default function ResultProcessor({
                 className="absolute top-2.5 right-2 text-indigo-400 hover:text-indigo-700 dark:hover:text-amber-300 font-bold p-1 cursor-pointer text-[10px]"
                 aria-label="Dismiss notice"
               >
-                ✕
+                x
               </button>
             </div>
           )}

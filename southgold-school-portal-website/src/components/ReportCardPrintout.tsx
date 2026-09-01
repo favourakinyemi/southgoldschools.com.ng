@@ -440,11 +440,11 @@ export default function ReportCardPrintout({
                       </tr>
                       <tr className="divide-x divide-slate-200 dark:divide-slate-800">
                         <td className="p-2 bg-slate-50 dark:bg-slate-850 font-bold text-slate-500 dark:text-slate-405 text-[11px]">Gender Profile:</td>
-                        <td className="p-2 font-semibold text-slate-700 dark:text-slate-300">{targetStudent?.gender || 'Male'}</td>
+                        <td className="p-2 font-semibold text-slate-700 dark:text-slate-300">{targetStudent?.gender || 'Not recorded'}</td>
                       </tr>
                       <tr className="divide-x divide-slate-200 dark:divide-slate-800">
                         <td className="p-2 bg-slate-50 dark:bg-slate-850 font-bold text-slate-500 dark:text-slate-405 text-[11px]">Date of Birth / Age:</td>
-                        <td className="p-2 font-semibold text-slate-705 dark:text-slate-300">{targetStudent?.dateOfBirth || '2019-05-12'} (5 Years)</td>
+                        <td className="p-2 font-semibold text-slate-705 dark:text-slate-300">{targetStudent?.dateOfBirth || 'Not recorded'}</td>
                       </tr>
                       <tr className="divide-x divide-slate-200 dark:divide-slate-800">
                         <td className="p-2 bg-slate-50 dark:bg-slate-850 font-bold text-slate-500 dark:text-slate-405 text-[11px]">Academic Grade Class:</td>
@@ -621,10 +621,9 @@ export default function ReportCardPrintout({
               </div>
             )}
             <div className="flex-1 text-center sm:text-left">
-              <h2 className="text-xl font-black tracking-tight text-slate-900 dark:text-slate-100 uppercase">{config?.schoolName || 'SOUTHGOLD MONTESSORI SCHOOL'}</h2>
+              <h2 className="text-xl font-black tracking-tight text-slate-900 dark:text-slate-100 uppercase">{config?.schoolName || 'SOUTHGOLD SCHOOLS'}</h2>
               <p className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold mt-0.5 max-w-xl leading-relaxed">
-                {config?.schoolAddress || '3, Fagbeyi Ige, Olusi crescent, Hopeville Estate, Haruna B/Stop. Sangotedo, Lagos, Nigeria'} <br/>
-                {config?.schoolEmail || 'southgoldmontessorischools@gmail.com'}
+                {[config?.schoolAddress, config?.schoolEmail, config?.schoolPhone].filter(Boolean).join(' | ') || 'Official school academic record'}
               </p>
             </div>
           </div>
@@ -651,7 +650,7 @@ export default function ReportCardPrintout({
                 <tr className="divide-x divide-slate-200 dark:divide-slate-800">
                   <td className="p-2 bg-slate-50 dark:bg-slate-855 font-bold text-slate-500 dark:text-slate-405 border-r border-slate-200 dark:border-slate-800">Gender & Attendance:</td>
                   <td className="p-2 font-semibold text-slate-700 dark:text-slate-300">
-                    {targetStudent?.gender || 'Male'} • Attended {daysPresent}/{daysOpened} Days ({attendancePercentage}%)
+                    {targetStudent?.gender || 'Not recorded'} | Attended {daysPresent}/{daysOpened} Days ({attendancePercentage ?? 'Not recorded'})
                   </td>
                 </tr>
                 <tr className="divide-x divide-slate-200 dark:divide-slate-800">
@@ -758,24 +757,20 @@ export default function ReportCardPrintout({
               <div>
                 <span className="text-[9px] uppercase font-bold text-indigo-650 dark:text-indigo-400 block">Class Instructor Evaluation</span>
                 <p className="text-xs font-semibold text-slate-705 dark:text-slate-300 mt-0.5 italic leading-relaxed">
-                  {unpackedRemarksObj.classTeacherRemark ? `"${unpackedRemarksObj.classTeacherRemark}"` : '"Awaiting custom teacher report commentary."'}
+                  {unpackedRemarksObj.classTeacherRemark ? `"${unpackedRemarksObj.classTeacherRemark}"` : 'No class teacher remark recorded.'}
                 </p>
               </div>
               <div>
                 <span className="text-[9px] uppercase font-bold text-slate-455 block">Head Teacher Evaluation</span>
                 <p className="text-xs font-semibold text-slate-705 dark:text-slate-300 mt-0.5 italic leading-relaxed">
-                  {unpackedRemarksObj.headTeacherRemark ? `"${unpackedRemarksObj.headTeacherRemark}"` : '"Awaiting Head Teacher evaluative remark."'}
+                  {unpackedRemarksObj.headTeacherRemark ? `"${unpackedRemarksObj.headTeacherRemark}"` : 'No Head Teacher remark recorded.'}
                 </p>
               </div>
               <div>
                 <span className="text-[9px] uppercase font-bold text-slate-455 block">Principal Academic Remark</span>
                 <p className="text-xs font-semibold text-slate-705 dark:text-slate-300 italic leading-relaxed">
                   {unpackedRemarksObj.principalRemark ? `"${unpackedRemarksObj.principalRemark}"` : (
-                    parseFloat(activeStudentAverage) >= 80 
-                      ? 'Promising excellence showing exemplary cognitive performance. Keep it up.' 
-                      : parseFloat(activeStudentAverage) >= 55 
-                      ? 'A good record displaying average academic focus. Can achieve higher standard.' 
-                      : 'Requires intensive home tutoring support for terminal recovery.'
+                    'No Principal remark recorded.'
                   )}
                 </p>
               </div>
