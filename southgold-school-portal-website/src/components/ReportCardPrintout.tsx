@@ -3,6 +3,7 @@ import { Student, ResultRecord, SchoolTerm, Subject, AssessmentItem } from '../t
 import { Check, X } from 'lucide-react';
 import { EarlyYearsResultRecord } from './EarlyYearsResultEditor';
 import { isReceptionClass } from '../data/preschoolSkills';
+import { cleanAcademicSession, formatOptionalDate, formatTermSession } from '../lib/portalDisplay';
 
 interface ReportCardPrintoutProps {
   targetStudent: Student | undefined;
@@ -90,7 +91,9 @@ export default function ReportCardPrintout({
     ? studentAttendanceRecords.filter((a: any) => a.status === 'Present' || a.status === 'Late').length 
     : 0;
   const daysAbsent = Math.max(0, daysOpened - daysPresent);
-  const attendancePercentage = daysOpened > 0 ? Math.round((daysPresent / daysOpened) * 100) : 0;
+  const attendancePercentage = daysOpened > 0 ? Math.round((daysPresent / daysOpened) * 100) : null;
+  const sessionDisplayName = cleanAcademicSession(activeSessionName, selectedTerm) || activeSessionName;
+  const termSessionLabel = formatTermSession(selectedTerm, activeSessionName);
 
   const studentAssessmentItems = useMemo(() => {
     if (!targetStudent?.classId) return [];
@@ -157,8 +160,8 @@ export default function ReportCardPrintout({
   }, [targetStudentResults]);
 
   const preschoolTeacherRemark = useMemo(() => {
-    return customRemarkRec?.teacherRemark || (targetStudentResults.length > 0 ? "Competencies and motor-coordination checklists successfully evaluated." : "Awaiting evaluations.");
-  }, [customRemarkRec, targetStudentResults]);
+    return customRemarkRec?.teacherRemark || '';
+  }, [customRemarkRec]);
 
   const unpackedRemarksObj = useMemo(() => {
     const raw = customRemarkRec ? customRemarkRec.teacherRemark : '';
@@ -166,7 +169,7 @@ export default function ReportCardPrintout({
   }, [customRemarkRec]);
 
   return (
-    <div id="printable-report-card" className="p-6 md:p-8 space-y-6 flex-1 bg-white dark:bg-slate-900">
+    <div id="printable-report-card" className="mx-auto max-w-[210mm] p-6 md:p-8 space-y-6 flex-1 bg-white text-slate-900 shadow-sm ring-1 ring-slate-200 dark:ring-slate-800 print:shadow-none print:ring-0">
       {isPreschoolMode ? (
         <div className="space-y-6">
           {/* Logo and address */}
@@ -184,10 +187,9 @@ export default function ReportCardPrintout({
               </div>
             )}
             <div className="flex-1 text-center sm:text-left">
-              <h2 className="text-xl font-black tracking-tight text-slate-900 dark:text-slate-100 uppercase">{config?.schoolName || 'SOUTHGOLD MONTESSORI SCHOOL'}</h2>
+              <h2 className="text-xl font-black tracking-tight text-slate-900 dark:text-slate-100 uppercase">{config?.schoolName || 'SOUTHGOLD SCHOOLS'}</h2>
               <p className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold mt-0.5 max-w-xl leading-relaxed">
-                {config?.schoolAddress || '3, Fagbeyi Ige, Olusi crescent, Hopeville Estate, Haruna B/Stop. Sangotedo, Lagos, Nigeria'} <br/>
-                {config?.schoolEmail || 'southgoldmontessorischools@gmail.com'}
+                {[config?.schoolAddress, config?.schoolEmail, config?.schoolPhone].filter(Boolean).join(' | ') || 'Official school academic record'}
               </p>
             </div>
           </div>
@@ -195,10 +197,10 @@ export default function ReportCardPrintout({
           {/* Header Badge */}
           <div className="bg-indigo-50 dark:bg-slate-800 border border-indigo-100 dark:border-slate-700 text-center py-2 px-4 rounded-xl">
             <h3 className="text-xs font-black uppercase text-indigo-900 dark:text-indigo-100 tracking-wider font-display flex items-center justify-center gap-1.5">
-              <span>🌟 Early Years Cognitive & Milestone Evaluation Report</span>
+              <span>Early Years Cognitive & Milestone Evaluation Report</span>
             </h3>
             <p className="text-[9.5px] text-indigo-650 dark:text-indigo-400 font-bold uppercase tracking-widest mt-0.5">
-              {reportType === 'EOS' ? `END OF SESSION (ANNUAL) EVALUATION • ${activeSessionName}` : `${selectedTerm} • ${activeSessionName} Term Report`}
+              {reportType === 'EOS' ? `End of Session Evaluation | ${sessionDisplayName} Session` : termSessionLabel}
             </p>
           </div>
 
@@ -222,8 +224,8 @@ export default function ReportCardPrintout({
                   <span className="font-bold text-indigo-650 dark:text-indigo-405">{targetStudent?.classId}</span>
                 </div>
                 <div className="flex justify-between font-medium">
-                  <span className="text-slate-405">Gender & DoB:</span>
-                  <span className="text-slate-700 dark:text-slate-300">{targetStudent?.gender || 'Male'} • {targetStudent?.dateOfBirth || '2021-02-14'}</span>
+                  <span className="text-slate-405">Gender & Date of Birth:</span>
+                  <span className="text-slate-700 dark:text-slate-300">{targetStudent?.gender || 'Not available'} | {targetStudent?.dateOfBirth || 'Not available'}</span>
                 </div>
               </div>
             </div>
@@ -307,7 +309,7 @@ export default function ReportCardPrintout({
                   return classSubjects.map(sub => {
                     const rec = targetStudentResults?.find(r => r.subjectId === sub.id) ||
                       earlyYearsResults?.find(r => r.studentId === targetStudent?.id && r.subjectId === sub.id);
-                    const rating = rec ? ((rec as any).grade || (rec as any).rating || 'Good') : 'Good';
+                    const rating = rec ? ((rec as any).grade || (rec as any).rating || 'Not assessed') : 'Not assessed';
 
                     return (
                       <tr key={sub.id} className="hover:bg-slate-50/10">
@@ -410,10 +412,9 @@ export default function ReportCardPrintout({
                     </div>
                   )}
                   <div className="flex-1 text-center sm:text-left">
-                    <h2 className="text-xl font-black tracking-tight text-slate-900 dark:text-slate-100 uppercase">{config?.schoolName || 'SOUTHGOLD MONTESSORI SCHOOL'}</h2>
+                    <h2 className="text-xl font-black tracking-tight text-slate-900 dark:text-slate-100 uppercase">{config?.schoolName || 'SOUTHGOLD SCHOOLS'}</h2>
                     <p className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold mt-0.5 max-w-xl leading-relaxed">
-                      {config?.schoolAddress || '3, Fagbeyi Ige, Olusi crescent, Hopeville Estate, Haruna B/Stop. Sangotedo, Lagos, Nigeria'} <br/>
-                      {config?.schoolEmail || 'southgoldmontessorischools@gmail.com'}
+                      {[config?.schoolAddress, config?.schoolEmail, config?.schoolPhone].filter(Boolean).join(' | ') || 'Official school academic record'}
                     </p>
                   </div>
                 </div>

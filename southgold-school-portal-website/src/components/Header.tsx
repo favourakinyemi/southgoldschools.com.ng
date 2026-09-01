@@ -7,6 +7,7 @@ import {
   Bell, 
 } from 'lucide-react';
 import { UserRole, SchoolTerm } from '../types';
+import { cleanAcademicSession } from '../lib/portalDisplay';
 
 interface HeaderProps {
   currentRole: UserRole;
@@ -38,6 +39,7 @@ export default function Header({
   userEmail
 }: HeaderProps) {
   const [showNotifDropdown, setShowNotifDropdown] = React.useState(false);
+  const activeSessionDisplayName = cleanAcademicSession(activeSessionName, activeTerm) || activeSessionName;
 
   const userNotifications = React.useMemo(() => {
     return notifications.filter(n => {
@@ -89,7 +91,7 @@ export default function Header({
     switch (currentRole) {
       case 'SUPER_ADMIN':
       case 'SCHOOL_ADMIN':
-        return 'School Operations';
+        return 'Admin Workspace';
       case 'TEACHER':
         return 'Teaching Workspace';
       case 'PARENT':
@@ -136,7 +138,7 @@ export default function Header({
             >
               {sessions.map((s) => (
                 <option key={s.id} value={s.id} className="dark:bg-slate-900">
-                  {s.name}
+                  {cleanAcademicSession(s.name, activeTerm) || s.name}
                 </option>
               ))}
             </select>
@@ -158,7 +160,7 @@ export default function Header({
         {(currentRole !== 'SCHOOL_ADMIN' && currentRole !== 'SUPER_ADMIN') && (
           <div className="hidden md:flex items-center gap-2 rounded-md border border-portal-border dark:border-slate-800 bg-portal-elevated dark:bg-slate-900 px-3 py-2">
             <Calendar className="text-portal-primary dark:text-blue-400" size={15} />
-            <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">{activeSessionName}</span>
+            <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">{activeSessionDisplayName}</span>
             <span className="text-xs font-semibold text-portal-primary dark:text-blue-300">{activeTerm}</span>
           </div>
         )}

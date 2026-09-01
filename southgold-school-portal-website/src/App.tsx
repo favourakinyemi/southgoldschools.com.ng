@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase, setRememberMe, isRememberMeEnabled } from './lib/supabase';
 import { CalendarDays } from 'lucide-react';
+import { cleanAcademicSession, formatOptionalDate } from './lib/portalDisplay';
 import { 
   Student, 
   Teacher, 
@@ -76,6 +77,7 @@ export default function App({ initialCms }: { initialCms?: any }) {
   const activeSessionObj = sessions.find(s => s.isActive) || sessions[0];
   const activeSessionName = activeSessionObj?.name || '2025/2026';
   const activeTerm = config?.currentTerm || 'First Term';
+  const activeSessionDisplayName = cleanAcademicSession(activeSessionName, activeTerm) || activeSessionName;
   const currentRole = authUser?.user?.role || 'SCHOOL_ADMIN';
   const userEmail = authUser?.user?.email || '';
   const isLoggedIn = !!authUser;
@@ -947,13 +949,13 @@ export default function App({ initialCms }: { initialCms?: any }) {
                 <div>
                   <p className="text-sm font-bold text-portal-heading dark:text-slate-100">{activeTerm} Academic Calendar</p>
                   <p className="mt-1 text-xs leading-5 text-portal-muted dark:text-slate-400">
-                    Resumption date: {config?.resumptionDate ? new Date(config.resumptionDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : 'TBD'}.
-                    {' '}Closing date: {config?.closingDate ? new Date(config.closingDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : 'TBD'}.
+                    Resumption date: {formatOptionalDate(config?.resumptionDate)}.
+                    {' '}Closing date: {formatOptionalDate(config?.closingDate)}.
                   </p>
                 </div>
               </div>
               <span className="self-start sm:self-center text-[11px] bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-md font-bold text-slate-600 dark:text-slate-300">
-                {activeSessionName}
+                {activeSessionDisplayName} Session
               </span>
             </div>
 

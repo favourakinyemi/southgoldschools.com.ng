@@ -14,6 +14,7 @@ import {
   ClipboardList
 } from 'lucide-react';
 import { Student, Teacher, FeeRecord, AttendanceRecord, SchoolNotification, ResultRecord, Subject } from '../types';
+import { cleanAcademicSession, formatTermSession } from '../lib/portalDisplay';
 
 interface DashboardStatsProps {
   currentRole: string;
@@ -48,6 +49,8 @@ export default function DashboardStats({
   userId,
   subjects = []
 }: DashboardStatsProps) {
+  const sessionDisplayName = cleanAcademicSession(activeSessionName, activeTerm) || activeSessionName;
+  const termSessionLabel = formatTermSession(activeTerm, activeSessionName);
 
   // 1. Calculations for Admin Visual Dashboard
   const adminTotalStudents = students.length;
@@ -106,7 +109,7 @@ export default function DashboardStats({
             <div>
               <h2 className="text-2xl font-extrabold text-portal-heading dark:text-white tracking-tight">School Overview</h2>
               <p className="mt-1 text-sm text-portal-muted dark:text-slate-400">
-                A snapshot of academics and operations for {activeTerm}, {activeSessionName}.
+                Monitor academics, attendance and school operations for {termSessionLabel}.
               </p>
             </div>
           </div>
@@ -120,7 +123,7 @@ export default function DashboardStats({
                 <span className="text-xs font-semibold text-portal-muted dark:text-slate-400">Total Enrolled Pupils</span>
                 <h3 className="text-3xl font-extrabold text-portal-heading dark:text-slate-100 mt-2">{adminTotalStudents}</h3>
                 <span className="text-xs text-portal-success font-semibold flex items-center mt-2">
-                  Active in {activeSessionName}
+                  {sessionDisplayName} Session
                 </span>
               </div>
               <div className="p-3 bg-blue-50 text-portal-primary dark:bg-blue-950/25 dark:text-blue-400 rounded-lg">
@@ -188,7 +191,7 @@ export default function DashboardStats({
                     <BarChart3 size={17} className="text-portal-primary" />
                     <span>Grading Distribution Analysis</span>
                   </h4>
-                  <p className="text-portal-muted dark:text-slate-400 text-xs mt-1">Approved result records for {activeTerm} ({activeSessionName})</p>
+                  <p className="text-portal-muted dark:text-slate-400 text-xs mt-1">Approved result records for {termSessionLabel}</p>
                 </div>
                 <span className="text-xs font-semibold bg-emerald-500/10 text-portal-success px-2.5 py-1 rounded-md">
                   {approvedResults.length} approved
@@ -246,7 +249,7 @@ export default function DashboardStats({
                     <span>Academic Term</span>
                   </div>
                   <p className="text-xl font-extrabold text-portal-heading dark:text-slate-200">{activeTerm}</p>
-                  <span className="text-xs text-portal-muted dark:text-slate-400 block mt-0.5">Active under session {activeSessionName}</span>
+                  <span className="text-xs text-portal-muted dark:text-slate-400 block mt-0.5">{sessionDisplayName} Session</span>
                 </div>
               </div>
 
@@ -266,7 +269,7 @@ export default function DashboardStats({
                 <Activity className="mx-auto text-slate-400" size={24} />
                 <p className="mt-3 text-sm font-bold text-portal-heading dark:text-slate-100">No recent activity yet.</p>
                 <p className="mt-1 text-xs leading-5 text-portal-muted dark:text-slate-400">
-                  Activity will appear here when an audit feed is connected to the portal.
+                  No recent activity has been recorded.
                 </p>
               </div>
 
@@ -307,7 +310,7 @@ export default function DashboardStats({
               <p className="text-xs font-semibold text-[#d9b65f]">Teaching Workspace</p>
               <h2 className="text-xl font-extrabold tracking-tight">Welcome back, {teacherProfile ? `${teacherProfile.firstName} ${teacherProfile.lastName}` : 'Teacher'}</h2>
               <p className="text-blue-100 text-sm leading-6 max-w-xl">
-                Manage attendance and result processing for your assigned classes in {activeTerm}, {activeSessionName}.
+                Manage attendance and result processing for your assigned classes in {termSessionLabel}.
               </p>
             </div>
             <div className="flex gap-2 shrink-0 z-10">
