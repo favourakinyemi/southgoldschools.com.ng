@@ -24,4 +24,6 @@ export const PUBLIC_ROUTES: PublicRoute[] = [
   { path: '/login/teacher', indexable: false },
   { path: '/login/parent', indexable: false },
   { path: '/login/student', indexable: false },
+  { path: '/forgot-password', indexable: false },
+  { path: '/reset-password', indexable: false },
 ];

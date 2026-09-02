@@ -26,6 +26,14 @@ const routeMetadata: Record<string, { title: string; description: string }> = {
     description:
       'Begin your child\'s admission enquiry at SouthGold Schools in Sangotedo, Lagos. Contact the admissions team and learn about available programmes.',
   },
+  '/forgot-password': {
+    title: 'Forgot Password | SouthGold Schools Portal',
+    description: 'Request secure password recovery instructions for a SouthGold Schools portal account.',
+  },
+  '/reset-password': {
+    title: 'Reset Password | SouthGold Schools Portal',
+    description: 'Set a new password for a SouthGold Schools portal account after email recovery.',
+  },
 };
 
 function pathFromParams(params?: { slug?: string[] }) {
@@ -55,7 +63,10 @@ export async function generateMetadata({ params }: { params?: { slug?: string[] 
       title: meta.title,
       description: meta.description,
     },
-    robots: path.startsWith('/login') ? { index: false, follow: false } : { index: true, follow: true },
+    robots:
+      path.startsWith('/login') || path === '/forgot-password' || path === '/reset-password'
+        ? { index: false, follow: false }
+        : { index: true, follow: true },
   };
 }
 

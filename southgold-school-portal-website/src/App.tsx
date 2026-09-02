@@ -85,8 +85,14 @@ export default function App({ initialCms }: { initialCms?: any }) {
   // 3. Restore session from Supabase on mount and listen to changes
   useEffect(() => {
     let isMounted = true;
+    const isPasswordRecoveryRoute = () => window.location.pathname === '/reset-password';
 
     async function handleSession(session: any) {
+      if (isPasswordRecoveryRoute()) {
+        if (isMounted) setAuthUser(null);
+        return;
+      }
+
       if (session) {
         try {
           const syncRes = await fetch('/api/auth/session', {
@@ -131,6 +137,7 @@ export default function App({ initialCms }: { initialCms?: any }) {
     }
 
     supabase.auth.getSession().then(({ data: { session } }) => {
+      if (isPasswordRecoveryRoute()) return;
       if (session) {
         handleSession(session);
       }

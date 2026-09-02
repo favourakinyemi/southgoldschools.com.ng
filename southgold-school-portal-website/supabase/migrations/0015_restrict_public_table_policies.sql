@@ -47,10 +47,10 @@ end $$;
 
 revoke execute on function public.onboard_student_transaction(
   text, text, text, text, text, text, text, text, text, text,
-  text, text, text, text, text, text[], uuid, uuid, uuid
+  text, text, text, text, text, text, text[], uuid, uuid, uuid
 ) from public, anon, authenticated;
 
 grant execute on function public.onboard_student_transaction(
   text, text, text, text, text, text, text, text, text, text,
-  text, text, text, text, text, text[], uuid, uuid, uuid
+  text, text, text, text, text, text, text[], uuid, uuid, uuid
 ) to service_role;

@@ -6,6 +6,8 @@ import {
   Check,
   ChevronDown,
   GraduationCap,
+  Eye,
+  EyeOff,
   Laptop,
   Lock,
   Mail,
@@ -24,6 +26,7 @@ import {
 import { PUBLIC_ROUTES } from '../publicRoutes';
 import { SchoolActivity, UserRole } from '../types';
 import { HOMEPAGE_IMAGE_DEFAULTS } from '../data/cmsDefaults';
+import { supabase } from '../lib/supabase';
 
 interface LandingPageProps {
   onLogin: (email: string, password: string, expectedRole?: UserRole, rememberMe?: boolean) => Promise<void>;
@@ -55,6 +58,8 @@ const DEFAULT_SCHOOL_NAME = 'SouthGold Schools';
 const DEFAULT_ADDRESS = '3, Fagbeyi Ige, Olusi Crescent, Hopeville Estate, Haruna Bus-Stop, Sangotedo, Lagos, Nigeria';
 const DEFAULT_EMAIL = 'southgoldmontessorischools@gmail.com';
 const DEFAULT_PHONE = '07067742997, 08025951409';
+const RECOVERY_NEUTRAL_MESSAGE = 'If an account exists for this email, password reset instructions have been sent.';
+const PASSWORD_MIN_LENGTH = 8;
 
 const fallbackCms = {
   motto: 'Learn and grow together.',
@@ -309,6 +314,17 @@ export default function LandingPage({
   const [passwordInput, setPasswordInput] = useState('');
   const [rememberMe, setRememberMe] = useState(true);
   const [loginLoading, setLoginLoading] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotLoading, setForgotLoading] = useState(false);
+  const [forgotMessage, setForgotMessage] = useState<string | null>(null);
+  const [resetPassword, setResetPassword] = useState('');
+  const [resetPasswordConfirm, setResetPasswordConfirm] = useState('');
+  const [resetLoading, setResetLoading] = useState(false);
+  const [resetCheckingSession, setResetCheckingSession] = useState(false);
+  const [resetSessionReady, setResetSessionReady] = useState(false);
+  const [resetError, setResetError] = useState<string | null>(null);
+  const [resetMessage, setResetMessage] = useState<string | null>(null);
+  const [showResetPassword, setShowResetPassword] = useState(false);
   const [formState, setFormState] = useState<EnquiryFormState>({
     parentName: '',
     phone: '',
@@ -382,6 +398,57 @@ export default function LandingPage({
   useEffect(() => {
     if (globalLoginError) setLoginError(globalLoginError);
   }, [globalLoginError]);
+
+  useEffect(() => {
+    if (currentPath !== '/reset-password') return;
+
+    let active = true;
+    const cleanRecoveryUrl = () => {
+      if (window.location.search || window.location.hash) {
+        window.history.replaceState(null, '', '/reset-password');
+      }
+    };
+
+    const prepareRecoverySession = async () => {
+      setResetCheckingSession(true);
+      setResetError(null);
+      try {
+        const code = new URLSearchParams(window.location.search).get('code');
+        if (code) {
+          const { error } = await supabase.auth.exchangeCodeForSession(code);
+          if (error) throw error;
+        }
+
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!active) return;
+        setResetSessionReady(!!session);
+        if (session) cleanRecoveryUrl();
+      } catch {
+        if (active) {
+          setResetSessionReady(false);
+          setResetError('This password reset link is invalid or has expired. Please request a new one.');
+        }
+      } finally {
+        if (active) setResetCheckingSession(false);
+      }
+    };
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!active) return;
+      if (event === 'PASSWORD_RECOVERY' || session) {
+        setResetSessionReady(!!session);
+        setResetError(null);
+        if (session) cleanRecoveryUrl();
+      }
+    });
+
+    prepareRecoverySession();
+
+    return () => {
+      active = false;
+      subscription.unsubscribe();
+    };
+  }, [currentPath]);
 
   useEffect(() => {
     if (!selectedActivity && !selectedBulletin) return;
@@ -511,6 +578,60 @@ export default function LandingPage({
     } finally {
       setLoginLoading(false);
     }
+  };
+
+  const submitForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setForgotMessage(null);
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(forgotEmail.trim())) {
+      setForgotMessage('Please enter a valid email address.');
+      return;
+    }
+
+    setForgotLoading(true);
+    const redirectTo = `${window.location.origin}/reset-password`;
+    try {
+      await supabase.auth.resetPasswordForEmail(forgotEmail.trim(), { redirectTo });
+    } finally {
+      setForgotLoading(false);
+    }
+    setForgotMessage(RECOVERY_NEUTRAL_MESSAGE);
+  };
+
+  const validateResetPassword = () => {
+    if (resetPassword.length < PASSWORD_MIN_LENGTH) return `Password must be at least ${PASSWORD_MIN_LENGTH} characters.`;
+    if (!/[A-Za-z]/.test(resetPassword) || !/[0-9]/.test(resetPassword)) return 'Password must include both letters and numbers.';
+    if (resetPassword !== resetPasswordConfirm) return 'Passwords do not match.';
+    return null;
+  };
+
+  const submitResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setResetError(null);
+    setResetMessage(null);
+
+    const validationError = validateResetPassword();
+    if (validationError) {
+      setResetError(validationError);
+      return;
+    }
+
+    setResetLoading(true);
+    const { error } = await supabase.auth.updateUser({ password: resetPassword });
+    setResetLoading(false);
+
+    if (error) {
+      setResetError('Password could not be updated. Please request a new reset link and try again.');
+      return;
+    }
+
+    setResetPassword('');
+    setResetPasswordConfirm('');
+    setResetMessage('Your password has been updated. Please sign in with the new password.');
+    await supabase.auth.signOut();
+    await fetch('/api/auth/logout', { method: 'POST' }).catch(() => undefined);
+    window.setTimeout(() => handleNavigate('/login'), 1500);
   };
 
   const JsonLd = () => (
@@ -946,6 +1067,67 @@ export default function LandingPage({
     </main>
   );
 
+  const ForgotPasswordPage = () => (
+    <main className="flex min-h-[calc(100vh-80px)] items-center justify-center bg-[#f7f4ed] px-4 py-12">
+      <div className="w-full max-w-md bg-white p-6 shadow-xl sm:p-8">
+        <button type="button" onClick={() => handleNavigate('/login')} className="mb-8 inline-flex items-center gap-2 text-sm font-bold text-[#07172f] hover:text-[#9f7622]"><ArrowLeft size={16} /> Back to portals</button>
+        <div className="text-center">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center bg-[#07172f] text-[#c99a2e]"><Mail size={24} /></div>
+          <p className="mt-5 text-xs font-bold uppercase tracking-[0.22em] text-[#9f7622]">Account Recovery</p>
+          <h1 className="mt-2 text-2xl font-extrabold text-[#07172f]">Forgot Password?</h1>
+          <p className="mt-3 text-sm leading-7 text-slate-600">Enter the email address used for your SouthGold portal account.</p>
+        </div>
+        <form onSubmit={submitForgotPassword} className="mt-8 space-y-5" noValidate>
+          {forgotMessage && <p className="border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">{forgotMessage}</p>}
+          <Field label="Email Address" required type="email" value={forgotEmail} onChange={setForgotEmail} />
+          <button type="submit" disabled={forgotLoading} className="inline-flex w-full items-center justify-center gap-2 bg-[#07172f] px-6 py-3 text-sm font-bold text-white transition hover:bg-[#10294e] disabled:opacity-70"><Mail size={16} /> {forgotLoading ? 'Sending...' : 'Send reset instructions'}</button>
+        </form>
+      </div>
+    </main>
+  );
+
+  const ResetPasswordPage = () => (
+    <main className="flex min-h-[calc(100vh-80px)] items-center justify-center bg-[#f7f4ed] px-4 py-12">
+      <div className="w-full max-w-md bg-white p-6 shadow-xl sm:p-8">
+        <button type="button" onClick={() => handleNavigate('/login')} className="mb-8 inline-flex items-center gap-2 text-sm font-bold text-[#07172f] hover:text-[#9f7622]"><ArrowLeft size={16} /> Back to login</button>
+        <div className="text-center">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center bg-[#07172f] text-[#c99a2e]"><Lock size={24} /></div>
+          <p className="mt-5 text-xs font-bold uppercase tracking-[0.22em] text-[#9f7622]">Secure Reset</p>
+          <h1 className="mt-2 text-2xl font-extrabold text-[#07172f]">Create a new password</h1>
+        </div>
+        <form onSubmit={submitResetPassword} className="mt-8 space-y-5" noValidate>
+          {resetCheckingSession && <p className="border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700">Checking reset link...</p>}
+          {resetError && <p className="border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">{resetError}</p>}
+          {resetMessage && <p className="border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">{resetMessage}</p>}
+          {!resetSessionReady && !resetCheckingSession ? (
+            <button type="button" onClick={() => handleNavigate('/forgot-password')} className="inline-flex w-full items-center justify-center gap-2 bg-[#07172f] px-6 py-3 text-sm font-bold text-white transition hover:bg-[#10294e]"><Mail size={16} /> Request a new reset link</button>
+          ) : (
+            <>
+              <div>
+                <label className="mb-2 block text-xs font-bold uppercase tracking-[0.16em] text-slate-600">New Password *</label>
+                <div className="flex border border-slate-300 bg-white focus-within:border-[#c99a2e] focus-within:ring-2 focus-within:ring-[#c99a2e]/20">
+                  <input
+                    type={showResetPassword ? 'text' : 'password'}
+                    required
+                    value={resetPassword}
+                    onChange={(e) => setResetPassword(e.target.value)}
+                    className="min-w-0 flex-1 px-4 py-3 text-sm text-slate-900 outline-none"
+                    autoComplete="new-password"
+                  />
+                  <button type="button" onClick={() => setShowResetPassword((show) => !show)} className="flex w-12 shrink-0 items-center justify-center text-slate-500 hover:text-[#07172f]" aria-label={showResetPassword ? 'Hide password' : 'Show password'}>
+                    {showResetPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
+              </div>
+              <Field label="Confirm Password" required type={showResetPassword ? 'text' : 'password'} value={resetPasswordConfirm} onChange={setResetPasswordConfirm} />
+              <button type="submit" disabled={resetLoading} className="inline-flex w-full items-center justify-center gap-2 bg-[#07172f] px-6 py-3 text-sm font-bold text-white transition hover:bg-[#10294e] disabled:opacity-70"><Lock size={16} /> {resetLoading ? 'Updating...' : 'Update password'}</button>
+            </>
+          )}
+        </form>
+      </div>
+    </main>
+  );
+
   const RoleLogin = ({ role }: { role: UserRole }) => {
     const roleConfig = portalRolesConfig.find((item) => item.role === role);
     const Icon = roleConfig?.icon || ShieldCheck;
@@ -958,7 +1140,10 @@ export default function LandingPage({
             {loginError && <p className="border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">{loginError}</p>}
             <Field label="Email Address" required type="email" value={emailInput} onChange={setEmailInput} />
             <Field label="Password" required type="password" value={passwordInput} onChange={setPasswordInput} />
-            <label className="flex items-center gap-3 text-sm font-semibold text-slate-700"><input type="checkbox" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} className="h-4 w-4 accent-[#c99a2e]" /> Remember me</label>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <label className="flex items-center gap-3 text-sm font-semibold text-slate-700"><input type="checkbox" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} className="h-4 w-4 accent-[#c99a2e]" /> Remember me</label>
+              <button type="button" onClick={() => handleNavigate('/forgot-password')} className="text-sm font-bold text-[#07172f] hover:text-[#9f7622]">Forgot Password?</button>
+            </div>
             <button type="submit" disabled={loginLoading} className="inline-flex w-full items-center justify-center gap-2 bg-[#07172f] px-6 py-3 text-sm font-bold text-white transition hover:bg-[#10294e] disabled:opacity-70"><Lock size={16} /> {loginLoading ? 'Signing in...' : 'Sign in'}</button>
           </form>
         </div>
@@ -967,17 +1152,20 @@ export default function LandingPage({
   };
 
   const activeRole = PATH_TO_ROLE[currentPath];
+  const isAuthUtilityPath = currentPath === '/login' || currentPath === '/forgot-password' || currentPath === '/reset-password';
 
   return (
     <div className="min-h-screen bg-white font-sans text-slate-900 dark:bg-slate-950 dark:text-slate-100">
       <JsonLd />
       {PublicNav()}
       {currentPath === '/login' && LoginIndex()}
+      {currentPath === '/forgot-password' && ForgotPasswordPage()}
+      {currentPath === '/reset-password' && ResetPasswordPage()}
       {activeRole && RoleLogin({ role: activeRole })}
       {!activeRole && currentPath === '/' && HomePage()}
       {!activeRole && currentPath === '/about' && AboutPage()}
       {!activeRole && currentPath === '/admissions' && AdmissionsPage()}
-      {!activeRole && currentPath !== '/login' && Footer()}
+      {!activeRole && !isAuthUtilityPath && Footer()}
 
       {(selectedActivity || selectedBulletin) && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/75 p-4" onClick={() => { setSelectedActivity(null); setSelectedBulletin(null); }}>
@@ -990,7 +1178,7 @@ export default function LandingPage({
         </div>
       )}
 
-      {!activeRole && currentPath !== '/login' && <a href={`https://wa.me/${whatsappNumber}?text=Hello%20SouthGold%20Schools.%20I%20am%20inquiring%20about%20admissions.`} target="_blank" rel="noopener noreferrer" className="fixed bottom-5 right-5 z-50 bg-emerald-600 px-4 py-3 text-sm font-bold text-white shadow-lg transition hover:bg-emerald-700">WhatsApp</a>}
+      {!activeRole && !isAuthUtilityPath && <a href={`https://wa.me/${whatsappNumber}?text=Hello%20SouthGold%20Schools.%20I%20am%20inquiring%20about%20admissions.`} target="_blank" rel="noopener noreferrer" className="fixed bottom-5 right-5 z-50 bg-emerald-600 px-4 py-3 text-sm font-bold text-white shadow-lg transition hover:bg-emerald-700">WhatsApp</a>}
     </div>
   );
 }

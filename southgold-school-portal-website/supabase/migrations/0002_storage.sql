@@ -23,13 +23,10 @@ ON storage.objects FOR INSERT
 TO authenticated
 WITH CHECK (
   bucket_id = 'school-assets' AND
-  (
-    (auth.jwt() -> 'user_metadata' ->> 'role') IN ('SUPER_ADMIN', 'SCHOOL_ADMIN') OR
-    EXISTS (
-      SELECT 1 FROM public.users
-      WHERE public.users.id = auth.uid()
-      AND public.users.user_role IN ('SUPER_ADMIN', 'SCHOOL_ADMIN')
-    )
+  EXISTS (
+    SELECT 1 FROM public.users
+    WHERE public.users.id = auth.uid()
+    AND public.users.user_role IN ('SUPER_ADMIN', 'SCHOOL_ADMIN')
   )
 );
 
@@ -39,13 +36,10 @@ ON storage.objects FOR UPDATE
 TO authenticated
 USING (
   bucket_id = 'school-assets' AND
-  (
-    (auth.jwt() -> 'user_metadata' ->> 'role') IN ('SUPER_ADMIN', 'SCHOOL_ADMIN') OR
-    EXISTS (
-      SELECT 1 FROM public.users
-      WHERE public.users.id = auth.uid()
-      AND public.users.user_role IN ('SUPER_ADMIN', 'SCHOOL_ADMIN')
-    )
+  EXISTS (
+    SELECT 1 FROM public.users
+    WHERE public.users.id = auth.uid()
+    AND public.users.user_role IN ('SUPER_ADMIN', 'SCHOOL_ADMIN')
   )
 );
 
@@ -55,12 +49,9 @@ ON storage.objects FOR DELETE
 TO authenticated
 USING (
   bucket_id = 'school-assets' AND
-  (
-    (auth.jwt() -> 'user_metadata' ->> 'role') IN ('SUPER_ADMIN', 'SCHOOL_ADMIN') OR
-    EXISTS (
-      SELECT 1 FROM public.users
-      WHERE public.users.id = auth.uid()
-      AND public.users.user_role IN ('SUPER_ADMIN', 'SCHOOL_ADMIN')
-    )
+  EXISTS (
+    SELECT 1 FROM public.users
+    WHERE public.users.id = auth.uid()
+    AND public.users.user_role IN ('SUPER_ADMIN', 'SCHOOL_ADMIN')
   )
 );
