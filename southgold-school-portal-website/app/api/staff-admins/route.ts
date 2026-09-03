@@ -19,7 +19,8 @@ export async function POST(request: Request) {
   if (auth instanceof NextResponse) return auth;
   try {
     const body = await request.json();
-    return NextResponse.json(await repo.StaffAdmins.insert([body]), { status: 201 });
+    const [created] = await repo.StaffAdmins.insert([body]);
+    return NextResponse.json(created, { status: 201 });
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 });
   }

@@ -169,7 +169,17 @@ export default function ReportCardPrintout({
   }, [customRemarkRec]);
 
   return (
-    <div id="printable-report-card" className="mx-auto max-w-[210mm] p-6 md:p-8 space-y-6 flex-1 bg-white text-slate-900 shadow-sm ring-1 ring-slate-200 dark:ring-slate-800 print:shadow-none print:ring-0">
+    <div id="printable-report-card" className="relative mx-auto max-w-[210mm] overflow-hidden rounded-sm bg-white p-6 md:p-8 text-slate-900 shadow-xl shadow-slate-200/60 ring-1 ring-slate-200 print:rounded-none print:shadow-none print:ring-0 print:p-6">
+      {config?.logoUrl && (
+        <img
+          src={config.logoUrl}
+          alt=""
+          aria-hidden="true"
+          className="pointer-events-none absolute left-1/2 top-1/2 z-0 h-72 w-72 -translate-x-1/2 -translate-y-1/2 object-contain opacity-[0.035] grayscale print:opacity-[0.045]"
+          referrerPolicy="no-referrer"
+        />
+      )}
+      <div className="relative z-10 space-y-6">
       {isPreschoolMode ? (
         <div className="space-y-6">
           {/* Logo and address */}
@@ -607,72 +617,63 @@ export default function ReportCardPrintout({
       ) : (
         <div className="space-y-6">
           {/* Branding matching the high-fidelity template */}
-          <div className="flex flex-col sm:flex-row items-center gap-4 border-b border-slate-200 dark:border-slate-800 pb-3">
+          <div className="rounded-md border border-slate-200 bg-gradient-to-r from-slate-50 via-white to-blue-50/60 p-4 print:bg-white">
+            <div className="flex flex-col items-center gap-4 text-center sm:flex-row sm:text-left">
             {config?.logoUrl ? (
               <img 
                 src={config.logoUrl} 
                 alt="School Logo" 
-                className="w-14 h-14 object-contain rounded-xl shadow-md shrink-0 bg-white p-0.5 border" 
+                className="h-16 w-16 shrink-0 rounded-md border border-slate-200 bg-white object-contain p-1 shadow-sm"
                 referrerPolicy="no-referrer"
               />
             ) : (
-              <div className="bg-blue-600 text-white w-14 h-14 rounded-full flex items-center justify-center font-black text-2xl tracking-wider shadow-md select-none shrink-0 border border-blue-500">
+              <div className="flex h-16 w-16 shrink-0 select-none items-center justify-center rounded-md border border-blue-500 bg-blue-600 text-2xl font-black tracking-wider text-white shadow-sm">
                 SG
               </div>
             )}
-            <div className="flex-1 text-center sm:text-left">
-              <h2 className="text-xl font-black tracking-tight text-slate-900 dark:text-slate-100 uppercase">{config?.schoolName || 'SOUTHGOLD SCHOOLS'}</h2>
-              <p className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold mt-0.5 max-w-xl leading-relaxed">
+            <div className="flex-1">
+              <h2 className="text-2xl font-black uppercase text-slate-950">{config?.schoolName || 'SOUTHGOLD SCHOOLS'}</h2>
+              <p className="mx-auto mt-1 max-w-2xl text-[11px] font-semibold leading-relaxed text-slate-600 sm:mx-0">
                 {[config?.schoolAddress, config?.schoolEmail, config?.schoolPhone].filter(Boolean).join(' | ') || 'Official school academic record'}
               </p>
+            </div>
+            <div className="rounded-md border border-blue-100 bg-white px-3 py-2 text-center shadow-sm">
+              <span className="block text-[9px] font-black uppercase tracking-widest text-slate-400">Session</span>
+              <span className="block text-xs font-black text-blue-700">{activeSessionName}</span>
+              <span className="mt-1 block text-[9px] font-black uppercase tracking-widest text-slate-400">Term</span>
+              <span className="block text-xs font-black text-slate-800">{selectedTerm}</span>
+            </div>
             </div>
           </div>
 
           {/* Header Badge */}
-          <div className="bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-center py-2 px-4 rounded-xl">
-            <h3 className="text-xs font-black uppercase text-slate-800 dark:text-slate-100 tracking-wider font-display">
+          <div className="border-y-2 border-blue-700 bg-blue-50/70 px-4 py-3 text-center print:bg-white">
+            <h3 className="font-display text-sm font-black uppercase tracking-wide text-slate-950">
               {selectedTerm.toUpperCase()} {activeSessionName} ACADEMIC REPORT CONTINUOUS LEDGER
             </h3>
           </div>
 
           {/* Student specifications */}
-          <div className="border border-slate-300 dark:border-slate-700 rounded-xl overflow-hidden bg-white dark:bg-slate-900 shadow-3xs">
-            <table className="w-full text-xs divide-y divide-slate-200 dark:divide-slate-800">
-              <tbody>
-                <tr className="divide-x divide-slate-200 dark:divide-slate-800">
-                  <td className="p-2 w-1/3 bg-slate-50 dark:bg-slate-855 font-bold text-slate-500 dark:text-slate-405 border-r border-slate-200 dark:border-slate-800">Pupil Full Name:</td>
-                  <td className="p-2 font-black text-slate-800 dark:text-slate-100 text-[12.5px]">{targetStudent?.firstName} {targetStudent?.lastName}</td>
-                </tr>
-                <tr className="divide-x divide-slate-200 dark:divide-slate-800">
-                  <td className="p-2 bg-slate-50 dark:bg-slate-855 font-bold text-slate-500 dark:text-slate-405 border-r border-slate-200 dark:border-slate-800">Admission No.:</td>
-                  <td className="p-2 font-mono font-bold text-blue-600 dark:text-blue-400">{targetStudent?.admissionNo}</td>
-                </tr>
-                <tr className="divide-x divide-slate-200 dark:divide-slate-800">
-                  <td className="p-2 bg-slate-50 dark:bg-slate-855 font-bold text-slate-500 dark:text-slate-405 border-r border-slate-200 dark:border-slate-800">Gender & Attendance:</td>
-                  <td className="p-2 font-semibold text-slate-700 dark:text-slate-300">
-                    {targetStudent?.gender || 'Not recorded'} | Attended {daysPresent}/{daysOpened} Days ({attendancePercentage ?? 'Not recorded'})
-                  </td>
-                </tr>
-                <tr className="divide-x divide-slate-200 dark:divide-slate-800">
-                  <td className="p-2 bg-slate-50 dark:bg-slate-855 font-bold text-slate-500 dark:text-slate-405 border-r border-slate-200 dark:border-slate-800">Academic Class Arm:</td>
-                  <td className="p-2 font-bold text-slate-800 dark:text-slate-200">{targetStudent?.classId} {targetStudent?.arm}</td>
-                </tr>
-                <tr className="divide-x divide-slate-200 dark:divide-slate-800">
-                  <td className="p-2 bg-slate-50 dark:bg-slate-854 font-bold text-slate-500 dark:text-slate-405 border-r border-slate-200 dark:border-slate-800">Teacher assigned:</td>
-                  <td className="p-2 font-semibold text-slate-700 dark:text-slate-300">Form Teacher</td>
-                </tr>
-              </tbody>
-            </table>
+          <div className="rounded-md border border-slate-200 bg-white p-4 shadow-sm">
+            <h4 className="mb-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Student Information</h4>
+            <div className="grid grid-cols-1 gap-3 text-xs md:grid-cols-2">
+              <div className="rounded border border-slate-100 bg-slate-50/80 p-3"><span className="block text-[10px] font-black uppercase tracking-wider text-slate-400">Full Name</span><span className="font-black text-slate-900">{targetStudent?.firstName} {targetStudent?.lastName}</span></div>
+              <div className="rounded border border-slate-100 bg-slate-50/80 p-3"><span className="block text-[10px] font-black uppercase tracking-wider text-slate-400">Admission No.</span><span className="font-mono font-black text-blue-700">{targetStudent?.admissionNo}</span></div>
+              <div className="rounded border border-slate-100 bg-slate-50/80 p-3"><span className="block text-[10px] font-black uppercase tracking-wider text-slate-400">Gender</span><span className="font-bold text-slate-800">{targetStudent?.gender || 'Not recorded'}</span></div>
+              <div className="rounded border border-slate-100 bg-slate-50/80 p-3"><span className="block text-[10px] font-black uppercase tracking-wider text-slate-400">Attendance</span><span className="font-mono font-bold text-emerald-700">{daysPresent}/{daysOpened} Days ({attendancePercentage ?? 'Not recorded'}%)</span></div>
+              <div className="rounded border border-slate-100 bg-slate-50/80 p-3"><span className="block text-[10px] font-black uppercase tracking-wider text-slate-400">Academic Class</span><span className="font-bold text-slate-900">{targetStudent?.classId} {targetStudent?.arm}</span></div>
+              <div className="rounded border border-slate-100 bg-slate-50/80 p-3"><span className="block text-[10px] font-black uppercase tracking-wider text-slate-400">Teacher Assigned</span><span className="font-bold text-slate-800">Form Teacher</span></div>
+            </div>
           </div>
 
           {/* Score Ledger List */}
           <div className="space-y-2">
-            <h4 className="text-[10px] font-black tracking-widest text-slate-400 dark:text-slate-405 uppercase">SUBJECT SCORE LEDGER ASSESSMENT</h4>
-            <div className="border border-slate-300 dark:border-slate-700 rounded-xl overflow-hidden bg-white dark:bg-slate-900 shadow-3xs">
+            <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-500">Subject Score Ledger Assessment</h4>
+            <div className="overflow-hidden rounded-md border border-slate-200 bg-white shadow-sm">
               <table className="w-full text-left text-xs">
                 <thead>
                   {isReceptionClass(targetStudent?.classId) ? (
-                    <tr className="bg-slate-50 dark:bg-slate-850 border-b border-slate-200 dark:border-slate-800 font-bold text-slate-500 dark:text-slate-300 uppercase text-[9.5px]">
+                    <tr className="border-b border-blue-100 bg-blue-50/80 text-[9.5px] font-black uppercase text-slate-600">
                       <th className="py-2.5 px-3">Subject Entitled</th>
                       <th className="py-2.5 px-3 text-center">Test / CA (40)</th>
                       <th className="py-2.5 px-3 text-center">Exams (60)</th>
@@ -681,7 +682,7 @@ export default function ReportCardPrintout({
                       <th className="py-2.5 px-3 no-print">Publishing Status</th>
                     </tr>
                   ) : (
-                    <tr className="bg-slate-50 dark:bg-slate-850 border-b border-slate-200 dark:border-slate-800 font-bold text-slate-500 dark:text-slate-300 uppercase text-[9.5px]">
+                    <tr className="border-b border-blue-100 bg-blue-50/80 text-[9.5px] font-black uppercase text-slate-600">
                       <th className="py-2.5 px-3">Subject Entitled</th>
                       <th className="py-2.5 px-3 text-center">CA1 (15)</th>
                       <th className="py-2.5 px-3 text-center">CA2 (15)</th>
@@ -693,22 +694,22 @@ export default function ReportCardPrintout({
                     </tr>
                   )}
                 </thead>
-                <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
+                <tbody className="divide-y divide-slate-100">
                   {targetStudentResults.length > 0 ? (
                     targetStudentResults.map(res => {
                       const sub = subjects.find(s => s.id === res.subjectId);
                       const scores = unpackScores(res);
                       const isReception = isReceptionClass(targetStudent?.classId);
                       return (
-                        <tr key={res.id} className="text-slate-700 dark:text-slate-300">
-                          <td className="py-2 px-3 font-semibold text-slate-800 dark:text-slate-250">{sub?.name || res.subjectId}</td>
+                        <tr key={res.id} className="text-slate-700 even:bg-slate-50/60">
+                          <td className="py-2.5 px-3 font-bold text-slate-900">{sub?.name || res.subjectId}</td>
                           <td className="py-2 px-3 text-center font-mono">{scores.ca1}</td>
                           {!isReception && <td className="py-2 px-3 text-center font-mono">{scores.ca2}</td>}
                           {!isReception && <td className="py-2 px-3 text-center font-mono">{scores.ca3}</td>}
                           <td className="py-2 px-3 text-center font-mono">{scores.exam}</td>
-                          <td className="py-2 px-3 text-center font-bold font-mono text-slate-800 dark:text-slate-100">{scores.total}</td>
+                          <td className="py-2 px-3 text-center font-bold font-mono text-slate-900">{scores.total}</td>
                           <td className="py-2 px-3 text-center">
-                            <span className="font-mono bg-blue-50 text-blue-600 dark:bg-blue-955/40 dark:text-blue-400 py-0.5 px-1.8 font-black rounded text-[10px] border border-blue-150">
+                            <span className="rounded border border-blue-100 bg-blue-50 px-2 py-0.5 font-mono text-[10px] font-black text-blue-700">
                               {res.grade}
                             </span>
                           </td>
@@ -747,13 +748,13 @@ export default function ReportCardPrintout({
           </div>
 
           {/* Progress evaluations metrics */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-b border-slate-200 dark:border-slate-800 py-4 mt-6">
-            <div className="text-center md:text-left">
-              <span className="text-[9px] uppercase font-bold text-slate-455 block">Terminal Average Percentage</span>
-              <p className="text-xl font-bold font-mono text-blue-600 dark:text-blue-400 mt-1">{activeStudentAverage}%</p>
+          <div className="mt-6 grid grid-cols-1 gap-4 border-y border-slate-200 py-4 md:grid-cols-2">
+            <div className="rounded-md border border-slate-200 bg-slate-50/80 p-4 text-center md:text-left">
+              <span className="block text-[9px] font-black uppercase tracking-widest text-slate-500">Terminal Average Percentage</span>
+              <p className="mt-1 font-mono text-2xl font-black text-blue-700">{activeStudentAverage}%</p>
               <span className="text-[10px] text-slate-400 block mt-0.5">Computed across {targetStudentResults.length} course studies</span>
             </div>
-            <div className="text-center md:text-left space-y-2">
+            <div className="space-y-2 rounded-md border border-slate-200 bg-white p-4 text-center md:text-left">
               <div>
                 <span className="text-[9px] uppercase font-bold text-indigo-650 dark:text-indigo-400 block">Class Instructor Evaluation</span>
                 <p className="text-xs font-semibold text-slate-705 dark:text-slate-300 mt-0.5 italic leading-relaxed">
@@ -778,18 +779,19 @@ export default function ReportCardPrintout({
           </div>
 
           {/* Signature panels */}
-          <div className="grid grid-cols-2 gap-8 pt-4">
-            <div className="border-t border-slate-250 dark:border-slate-800 pt-3 text-center">
-              <p className="text-xs font-semibold text-slate-800 dark:text-slate-205">Form Teacher</p>
-              <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5 block">Class Room Teacher</span>
+          <div className="grid grid-cols-2 gap-8 pt-6">
+            <div className="border-t-2 border-slate-300 pt-3 text-center">
+              <p className="text-xs font-bold text-slate-900">Form Teacher</p>
+              <span className="mt-0.5 block text-[9px] font-bold uppercase tracking-widest text-slate-400">Class Room Teacher</span>
             </div>
-            <div className="border-t border-slate-250 dark:border-slate-800 pt-3 text-center">
-              <p className="text-xs font-semibold text-slate-800 dark:text-slate-205">Head Teacher / Principal</p>
-              <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5 block">School Authority Signature</span>
+            <div className="border-t-2 border-slate-300 pt-3 text-center">
+              <p className="text-xs font-bold text-slate-900">Head Teacher / Principal</p>
+              <span className="mt-0.5 block text-[9px] font-bold uppercase tracking-widest text-slate-400">School Authority Signature</span>
             </div>
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

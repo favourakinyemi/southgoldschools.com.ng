@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import * as repo from '../../../../src/server/repo';
 import { requireRole } from '../../../../src/server/routeAuth';
+import { ResultScoreValidationException } from '../../../../src/lib/resultScoreValidation';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,6 +15,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     await repo.Results.update(id, body);
     return NextResponse.json({ success: true });
   } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: 500 });
+    const status = e instanceof ResultScoreValidationException ? 400 : 500;
+    return NextResponse.json({ error: e.message }, { status });
   }
 }

@@ -15,8 +15,18 @@ import {
   AlertCircle,
   Pencil
 } from 'lucide-react';
-import { Student, Teacher, Parent, ResultRecord, AttendanceRecord, SchoolTerm, Subject, AssessmentItem } from '../types';
+import { Student, Teacher, Parent, ResultRecord, AttendanceRecord, SchoolTerm, Subject, AssessmentItem, SchoolConfigState } from '../types';
 import { isChecklistPreschoolClass, isReceptionClass } from '../data/preschoolSkills';
+import { buildResultScoreLimits, validateScoreInput } from '../lib/resultScoreValidation';
+import ResultsBroadsheet from './ResultsBroadsheet';
+
+type TeacherScoreDraft = {
+  test: string;
+  assignment: string;
+  ca3: string;
+  exam: string;
+  remark: string;
+};
 
 interface TeacherPortalProps {
   currentRole: string;
@@ -25,7 +35,7 @@ interface TeacherPortalProps {
   students: Student[];
   onSetStudents?: (students: Student[]) => void;
   results: ResultRecord[];
-  onSetResults: (res: ResultRecord[]) => void;
+  onSetResults: (res: ResultRecord[]) => void | Promise<void>;
   attendance: AttendanceRecord[];
   onSetAttendance: (att: AttendanceRecord[]) => void;
   subjects: Subject[];
@@ -40,6 +50,7 @@ interface TeacherPortalProps {
   onSetParents?: (pa: Parent[]) => void;
   userEmail?: string;
   activeTab?: string;
+  config?: SchoolConfigState;
 }
 
 export default function TeacherPortal({
@@ -63,7 +74,8 @@ export default function TeacherPortal({
   parents = [],
   onSetParents,
   userEmail,
-  activeTab
+  activeTab,
+  config
 }: TeacherPortalProps) {
   
   // Dashboard view selection inside teacher component
@@ -94,7 +106,8 @@ export default function TeacherPortal({
   const [scoreArm, setScoreArm] = useState('A');
   const [scoreSubject, setScoreSubject] = useState('maths');
   const [scoreTerm, setScoreTerm] = useState<SchoolTerm>(activeTerm);
-  const [tempScores, setTempScores] = useState<Record<string, { test: number; assignment: number; exam: number; remark: string }>>({});
+  const [tempScores, setTempScores] = useState<Record<string, TeacherScoreDraft>>({});
+  const [scoreView, setScoreView] = useState<'ENTRY' | 'BROADSHEET'>('ENTRY');
 
   // Preschool Checklist Specific States
   const [selectedPreschoolStudentId, setSelectedPreschoolStudentId] = useState<string>('');
@@ -126,6 +139,12 @@ export default function TeacherPortal({
   const [staffPhotoUrl, setStaffPhotoUrl] = useState('');
 
   const [notif, setNotif] = useState<string | null>(null);
+  const [scoreErrors, setScoreErrors] = useState<Record<string, string>>({});
+  const scoreLimits = buildResultScoreLimits(config);
+  const parseTeacherScore = (value: unknown) => {
+    const numericValue = Number(value);
+    return Number.isFinite(numericValue) ? numericValue : 0;
+  };
 
   // Derived teacher-specific assignments to restrict access to their specific classes and subjects
   const loggedInTeacher = teachers.find(t => t.email?.toLowerCase() === userEmail?.toLowerCase());
@@ -252,6 +271,22 @@ export default function TeacherPortal({
             )
           )
         : subjects);
+
+  const broadsheetSubjects = React.useMemo(() => {
+    if (isAdminOrSuper || !loggedInTeacher?.classesAssigned) return subjects;
+    const allowedSubjectIds = new Set<string>();
+    loggedInTeacher.classesAssigned.forEach(assignment => {
+      if (assignment.subjectId === 'general_admin') {
+        const blueprint = classesWithSubjects?.find(item =>
+          item.classId?.toLowerCase() === assignment.classId?.toLowerCase()
+        );
+        (blueprint?.subjects || []).forEach(subjectId => allowedSubjectIds.add(subjectId));
+      } else {
+        allowedSubjectIds.add(assignment.subjectId);
+      }
+    });
+    return subjects.filter(subject => allowedSubjectIds.has(subject.id));
+  }, [classesWithSubjects, isAdminOrSuper, loggedInTeacher, subjects]);
 
   // Automatically load the attendance grid when selection parameters change
   React.useEffect(() => {
@@ -424,22 +459,90 @@ export default function TeacherPortal({
         r.term === scoreTerm && 
         r.session === activeSessionName
       );
+      const packedAssignment = Number(existing?.assignmentScore ?? 0);
+      const ca2 = packedAssignment % 100;
+      const ca3 = Math.floor(packedAssignment / 100);
+      const isReception = isReceptionClass(scoreClass);
       grid[s.id] = {
-        test: existing ? existing.testScore : 0,
-        assignment: existing ? existing.assignmentScore : 0,
-        exam: existing ? existing.examScore : 0,
+        test: String(existing ? existing.testScore : 0),
+        assignment: String(existing && !isReception ? ca2 : 0),
+        ca3: String(existing && !isReception ? ca3 : 0),
+        exam: String(existing ? existing.examScore : 0),
         remark: existing ? existing.teacherRemark : ''
       };
     });
     setTempScores(grid);
+    setScoreErrors({});
     triggerNotification('Pupils academic marks matrix loaded.');
   };
 
-  const handleSaveScores = () => {
+  const getTeacherScoreErrorKey = (studentId: string, field: 'test' | 'assignment' | 'ca3' | 'exam') => `${studentId}:${field}`;
+
+  const setTeacherScoreError = (studentId: string, field: 'test' | 'assignment' | 'ca3' | 'exam', message: string | null) => {
+    const key = getTeacherScoreErrorKey(studentId, field);
+    setScoreErrors(prev => {
+      const next = { ...prev };
+      if (message) {
+        next[key] = message;
+      } else {
+        delete next[key];
+      }
+      return next;
+    });
+  };
+
+  const validateTeacherScoreGrid = () => {
+    const nextErrors: Record<string, string> = {};
+    Object.entries(tempScores).forEach(([studentId, data]) => {
+      const isReception = isReceptionClass(scoreClass);
+      const checks: Array<['test' | 'assignment' | 'ca3' | 'exam', unknown, number, string]> = isReception
+        ? [
+            ['test', data.test, scoreLimits.receptionCa1Max, 'Reception test / CA'],
+            ['exam', data.exam, scoreLimits.receptionExamMax, 'Reception exam'],
+          ]
+        : [
+            ['test', data.test, scoreLimits.ca1Max, 'CA1'],
+            ['assignment', data.assignment, scoreLimits.ca2Max, 'CA2'],
+            ['ca3', data.ca3, scoreLimits.ca3Max, 'CA3'],
+            ['exam', data.exam, scoreLimits.examMax, 'Exam'],
+          ];
+
+      checks.forEach(([field, value, max, label]) => {
+        const message = validateScoreInput(value, max, label);
+        if (message) nextErrors[getTeacherScoreErrorKey(studentId, field)] = message;
+      });
+    });
+    return nextErrors;
+  };
+
+  const updateTeacherScoreDraft = (studentId: string, updates: Partial<TeacherScoreDraft>) => {
+    setTempScores(prev => {
+      const current = prev[studentId] || { test: '0', assignment: '0', ca3: '0', exam: '0', remark: '' };
+      return {
+        ...prev,
+        [studentId]: { ...current, ...updates }
+      };
+    });
+  };
+
+  const handleSaveScores = async () => {
+    const currentErrors = validateTeacherScoreGrid();
+    setScoreErrors(currentErrors);
+    if (Object.keys(currentErrors).length > 0) {
+      triggerNotification('Please fix highlighted score errors before saving.');
+      return;
+    }
+
     const updatedResults = [...results];
+    const isReception = isReceptionClass(scoreClass);
     Object.keys(tempScores).forEach((studentId) => {
       const data = tempScores[studentId];
-      const total = data.test + data.assignment + data.exam;
+      const testScore = parseTeacherScore(data.test);
+      const ca2Score = isReception ? 0 : parseTeacherScore(data.assignment);
+      const ca3Score = isReception ? 0 : parseTeacherScore(data.ca3);
+      const examScore = parseTeacherScore(data.exam);
+      const packedAssignmentScore = isReception ? 0 : ca3Score * 100 + ca2Score;
+      const total = testScore + ca2Score + ca3Score + examScore;
       const { grade, remark } = calculateGradeAndRemarks(total);
 
       const existingIdx = updatedResults.findIndex(r => 
@@ -459,9 +562,9 @@ export default function TeacherPortal({
         subjectId: scoreSubject,
         term: scoreTerm,
         session: activeSessionName,
-        testScore: data.test,
-        assignmentScore: data.assignment,
-        examScore: data.exam,
+        testScore,
+        assignmentScore: packedAssignmentScore,
+        examScore,
         totalScore: total,
         grade,
         teacherRemark: data.remark || remark,
@@ -476,8 +579,12 @@ export default function TeacherPortal({
       }
     });
 
-    onSetResults(updatedResults);
-    triggerNotification('Term scores uploaded. Awaiting School Admin publication approval.');
+    try {
+      await onSetResults(updatedResults);
+      triggerNotification('Term scores uploaded. Awaiting School Admin publication approval.');
+    } catch (err: any) {
+      triggerNotification(err?.message || 'Unable to save scores. Please try again.');
+    }
   };
 
   const triggerNotification = (text: string) => {
@@ -700,9 +807,21 @@ export default function TeacherPortal({
           photo: staffPhotoUrl || undefined
         };
 
-        onSetTeachers([...teachers, newStaff]);
-        triggerNotification(`Onboarded: Generated ${newStaff.staffId} for ${staffFirstName}`);
-        handleCancelEdit();
+        try {
+          const res = await fetch('/api/teachers', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(newStaff),
+          });
+          const created = await res.json().catch(() => null);
+          if (!res.ok) throw new Error(created?.error || 'Failed to onboard teacher');
+
+          onSetTeachers([...teachers, created]);
+          triggerNotification(`Onboarded: Generated ${created.staffId || newStaff.staffId} for ${staffFirstName}`);
+          handleCancelEdit();
+        } catch (err: any) {
+          alert(err.message);
+        }
       }
     } else if (activeOnboardCategory === 'SCHOOL_ADMIN') {
       const payload = {
@@ -732,8 +851,8 @@ export default function TeacherPortal({
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload),
           });
-          if (!res.ok) throw new Error('Failed to onboard staff admin');
-          const created = await res.json();
+          const created = await res.json().catch(() => null);
+          if (!res.ok) throw new Error(created?.error || 'Failed to onboard staff admin');
           if (onSetStaffAdmins) {
             onSetStaffAdmins([...staffAdmins, created]);
           }
@@ -1023,6 +1142,44 @@ export default function TeacherPortal({
       {/* ---------------- 2. SCORE PROCESSING SYSTEM ---------------- */}
       {internalTab === 'scores' && (
         <div className="space-y-5">
+          <div className="flex gap-2 border-b border-slate-200 dark:border-slate-800">
+            <button
+              type="button"
+              onClick={() => setScoreView('ENTRY')}
+              className={`py-2 px-4 text-xs font-bold transition-all ${
+                scoreView === 'ENTRY' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-slate-400 hover:text-slate-700'
+              }`}
+            >
+              Class Result View
+            </button>
+            <button
+              type="button"
+              onClick={() => setScoreView('BROADSHEET')}
+              className={`py-2 px-4 text-xs font-bold transition-all ${
+                scoreView === 'BROADSHEET' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-slate-400 hover:text-slate-700'
+              }`}
+            >
+              Broadsheet
+            </button>
+          </div>
+
+          {scoreView === 'BROADSHEET' ? (
+            <ResultsBroadsheet
+              students={students}
+              results={results}
+              subjects={broadsheetSubjects}
+              classes={availableClasses}
+              activeSessionName={activeSessionName}
+              activeTerm={scoreTerm}
+              gradingScale={[]}
+              config={config}
+              classesWithSubjects={(classesWithSubjects || []).map(item => ({
+                ...item,
+                subjects: item.subjects || []
+              }))}
+            />
+          ) : (
+            <>
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 space-y-4">
             <h4 className="text-xs font-bold text-slate-800 dark:text-slate-100 uppercase tracking-widest">Continuous Assessment Inputs & Grading Sheet</h4>
             
@@ -1291,9 +1448,10 @@ export default function TeacherPortal({
                           ) : (
                             <tr className="bg-slate-50 dark:bg-slate-850 border-b border-slate-200 dark:border-slate-800 text-slate-400 font-bold uppercase text-[10px] tracking-wider font-extrabold">
                               <th className="py-3 px-4">Pupil Profile</th>
-                              <th className="py-3 px-4">Test (Max 20)</th>
-                              <th className="py-3 px-4">Assignment (Max 20)</th>
-                              <th className="py-3 px-4">Exam (Max 60)</th>
+                              <th className="py-3 px-4">CA1 (Max {scoreLimits.ca1Max})</th>
+                              <th className="py-3 px-4">CA2 (Max {scoreLimits.ca2Max})</th>
+                              <th className="py-3 px-4">CA3 (Max {scoreLimits.ca3Max})</th>
+                              <th className="py-3 px-4">Exam (Max {scoreLimits.examMax})</th>
                               <th className="py-3 px-4">Calculated Grade</th>
                               <th className="py-3 px-4">Teacher remark comment</th>
                             </tr>
@@ -1301,11 +1459,22 @@ export default function TeacherPortal({
                         </thead>
                         <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                           {studentsInScoreClass.map(stud => {
-                            const gradeRecord = tempScores[stud.id] || { test: 0, assignment: 0, exam: 0, remark: '' };
+                            const gradeRecord = tempScores[stud.id] || { test: '0', assignment: '0', ca3: '0', exam: '0', remark: '' };
                             const isReception = isReceptionClass(scoreClass);
-                            const sumTotal = isReception ? (gradeRecord.test + gradeRecord.exam) : (gradeRecord.test + gradeRecord.assignment + gradeRecord.exam);
+                            const testScore = parseTeacherScore(gradeRecord.test);
+                            const ca2Score = parseTeacherScore(gradeRecord.assignment);
+                            const ca3Score = parseTeacherScore(gradeRecord.ca3);
+                            const examScore = parseTeacherScore(gradeRecord.exam);
+                            const sumTotal = isReception ? (testScore + examScore) : (testScore + ca2Score + ca3Score + examScore);
                             const { grade, remark } = calculateGradeAndRemarks(sumTotal);
-                            const maxTest = isReception ? 40 : 20;
+                            const maxTest = isReception ? scoreLimits.receptionCa1Max : scoreLimits.ca1Max;
+                            const maxAssignment = scoreLimits.ca2Max;
+                            const maxCa3 = scoreLimits.ca3Max;
+                            const maxExam = isReception ? scoreLimits.receptionExamMax : scoreLimits.examMax;
+                            const testError = scoreErrors[getTeacherScoreErrorKey(stud.id, 'test')];
+                            const assignmentError = scoreErrors[getTeacherScoreErrorKey(stud.id, 'assignment')];
+                            const ca3Error = scoreErrors[getTeacherScoreErrorKey(stud.id, 'ca3')];
+                            const examError = scoreErrors[getTeacherScoreErrorKey(stud.id, 'exam')];
                             
                             return (
                               <tr key={stud.id} className="text-xs text-slate-700 dark:text-slate-300">
@@ -1319,48 +1488,68 @@ export default function TeacherPortal({
                                     max={maxTest}
                                     value={gradeRecord.test}
                                     onChange={(e) => {
-                                      const val = Math.min(maxTest, Math.max(0, parseInt(e.target.value) || 0));
-                                      setTempScores({
-                                        ...tempScores,
-                                        [stud.id]: { ...gradeRecord, test: val, assignment: isReception ? 0 : gradeRecord.assignment }
+                                      const message = validateScoreInput(e.target.value, maxTest, isReception ? 'Reception test / CA' : 'CA1');
+                                      setTeacherScoreError(stud.id, 'test', message);
+                                      updateTeacherScoreDraft(stud.id, {
+                                        test: e.target.value,
+                                        ...(isReception ? { assignment: '0', ca3: '0' } : {})
                                       });
                                     }}
                                     className="w-16 bg-slate-50 dark:bg-slate-850 text-center py-1.5 px-2.5 border border-slate-205 dark:border-slate-800 rounded font-semibold font-mono"
                                   />
+                                  {testError && <p className="mt-1 text-[9px] font-bold text-red-600 dark:text-red-400">{testError}</p>}
                                 </td>
                                 {!isReception && (
                                   <td className="py-2.5 px-4">
                                     <input
                                       type="number"
                                       min={0}
-                                      max={20}
+                                      max={maxAssignment}
                                       value={gradeRecord.assignment}
                                       onChange={(e) => {
-                                        const val = Math.min(20, Math.max(0, parseInt(e.target.value) || 0));
-                                        setTempScores({
-                                          ...tempScores,
-                                          [stud.id]: { ...gradeRecord, assignment: val }
-                                        });
+                                        const message = validateScoreInput(e.target.value, maxAssignment, 'CA2');
+                                        setTeacherScoreError(stud.id, 'assignment', message);
+                                        updateTeacherScoreDraft(stud.id, { assignment: e.target.value });
                                       }}
                                       className="w-16 bg-slate-50 dark:bg-slate-850 text-center py-1.5 px-2.5 border border-slate-205 dark:border-slate-800 rounded font-semibold font-mono"
                                     />
+                                    {assignmentError && <p className="mt-1 text-[9px] font-bold text-red-600 dark:text-red-400">{assignmentError}</p>}
+                                  </td>
+                                )}
+                                {!isReception && (
+                                  <td className="py-2.5 px-4">
+                                    <input
+                                      type="number"
+                                      min={0}
+                                      max={maxCa3}
+                                      value={gradeRecord.ca3}
+                                      onChange={(e) => {
+                                        const message = validateScoreInput(e.target.value, maxCa3, 'CA3');
+                                        setTeacherScoreError(stud.id, 'ca3', message);
+                                        updateTeacherScoreDraft(stud.id, { ca3: e.target.value });
+                                      }}
+                                      className="w-16 bg-slate-50 dark:bg-slate-850 text-center py-1.5 px-2.5 border border-slate-205 dark:border-slate-800 rounded font-semibold font-mono"
+                                    />
+                                    {ca3Error && <p className="mt-1 text-[9px] font-bold text-red-600 dark:text-red-400">{ca3Error}</p>}
                                   </td>
                                 )}
                                 <td className="py-2.5 px-4">
                                   <input
                                     type="number"
                                     min={0}
-                                    max={60}
+                                    max={maxExam}
                                     value={gradeRecord.exam}
                                     onChange={(e) => {
-                                      const val = Math.min(60, Math.max(0, parseInt(e.target.value) || 0));
-                                      setTempScores({
-                                        ...tempScores,
-                                        [stud.id]: { ...gradeRecord, exam: val, assignment: isReception ? 0 : gradeRecord.assignment }
+                                      const message = validateScoreInput(e.target.value, maxExam, isReception ? 'Reception exam' : 'Exam');
+                                      setTeacherScoreError(stud.id, 'exam', message);
+                                      updateTeacherScoreDraft(stud.id, {
+                                        exam: e.target.value,
+                                        ...(isReception ? { assignment: '0', ca3: '0' } : {})
                                       });
                                     }}
                                     className="w-16 bg-slate-50 dark:bg-slate-850 text-center py-1.5 px-2.5 border border-slate-205 dark:border-slate-800 rounded font-semibold font-mono"
                                   />
+                                  {examError && <p className="mt-1 text-[9px] font-bold text-red-600 dark:text-red-400">{examError}</p>}
                                 </td>
                                 <td className="py-2.5 px-4 font-bold">
                                   <span className="text-slate-800 dark:text-slate-200">
@@ -1374,10 +1563,7 @@ export default function TeacherPortal({
                                   <input
                                     type="text"
                                     value={gradeRecord.remark}
-                                    onChange={(e) => setTempScores({
-                                      ...tempScores,
-                                      [stud.id]: { ...gradeRecord, remark: e.target.value }
-                                    })}
+                                    onChange={(e) => updateTeacherScoreDraft(stud.id, { remark: e.target.value })}
                                     className="w-full bg-slate-50 dark:bg-slate-850 py-1.5 px-3 border border-slate-250 dark:border-slate-800 rounded text-slate-700 font-medium"
                                     placeholder={remark}
                                   />
@@ -1392,7 +1578,7 @@ export default function TeacherPortal({
                     <div className="flex justify-between items-center bg-slate-50 dark:bg-slate-800/40 p-3 rounded-lg text-[11px] text-slate-500 font-semibold border border-dashed border-slate-250 dark:border-slate-800">
                       <span className="flex items-center gap-1.5">
                         <AlertCircle size={14} className="text-blue-600" />
-                        <span>Scores calculation matches: {isReceptionClass(scoreClass) ? 'Total = Test (40) + Exam (60)' : 'Total = Test (20) + Assignment (20) + Exam (60)'}</span>
+                        <span>Scores calculation matches: {isReceptionClass(scoreClass) ? `Total = Test (${scoreLimits.receptionCa1Max}) + Exam (${scoreLimits.receptionExamMax})` : `Total = CA1 (${scoreLimits.ca1Max}) + CA2 (${scoreLimits.ca2Max}) + CA3 (${scoreLimits.ca3Max}) + Exam (${scoreLimits.examMax})`}</span>
                       </span>
                       <button
                         onClick={handleSaveScores}
@@ -1412,6 +1598,8 @@ export default function TeacherPortal({
               );
             }
           })()}
+            </>
+          )}
         </div>
       )}
 

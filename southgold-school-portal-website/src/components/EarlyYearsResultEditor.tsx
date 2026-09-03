@@ -82,7 +82,8 @@ export default function EarlyYearsResultEditor({
   const [formRatings, setFormRatings] = useState<Record<string, 'EXCELLENT' | 'VERY GOOD' | 'GOOD' | 'FAIR' | ''>>({});
 
   // Form states inside modal (for Reception academic grid)
-  const [formReceptionScores, setFormReceptionScores] = useState<Record<string, { test: number; cbt: number; exam: number }>>({});
+  const [formReceptionScores, setFormReceptionScores] = useState<Record<string, { test: string; cbt: string; exam: string }>>({});
+  const [receptionScoreErrors, setReceptionScoreErrors] = useState<Record<string, string>>({});
 
   // Mode detection: Checklist-based preschool vs Reception
   const isChecklistClass = isChecklistPreschoolClass(selectedClass, classesWithSubjects);
@@ -212,15 +213,16 @@ export default function EarlyYearsResultEditor({
         r.session === activeSessionName
       );
 
-      const loadedScores: Record<string, { test: number; cbt: number; exam: number }> = {};
+      const loadedScores: Record<string, { test: string; cbt: string; exam: string }> = {};
       existing.forEach(r => {
         loadedScores[r.subjectId] = {
-          test: r.testScore || 0,
-          cbt: r.assignmentScore || 0,
-          exam: r.examScore || 0
+          test: String(r.testScore || 0),
+          cbt: String(r.assignmentScore || 0),
+          exam: String(r.examScore || 0)
         };
       });
       setFormReceptionScores(loadedScores);
+      setReceptionScoreErrors({});
     }
   };
 
@@ -228,6 +230,7 @@ export default function EarlyYearsResultEditor({
     setEvalStudentId(null);
     setFormRatings({});
     setFormReceptionScores({});
+    setReceptionScoreErrors({});
   };
 
   useEffect(() => {
@@ -252,14 +255,56 @@ export default function EarlyYearsResultEditor({
 
   // Reception score change
   const handleScoreChange = (subId: string, field: 'test' | 'cbt' | 'exam', valStr: string) => {
-    const val = parseInt(valStr, 10) || 0;
-    setFormReceptionScores(prev => {
-      const existing = prev[subId] || { test: 0, cbt: 0, exam: 0 };
-      let updated = { ...existing, [field]: val };
-      if (field === 'test') updated.test = Math.min(40, Math.max(0, val));
-      if (field === 'exam') updated.exam = Math.min(60, Math.max(0, val));
-      return { ...prev, [subId]: updated };
+    const errorKey = `${subId}:${field}`;
+    const label = field === 'test' ? 'Reception CA' : 'Reception exam';
+    const max = field === 'test' ? 40 : field === 'exam' ? 60 : 0;
+    const numericValue = Number(valStr);
+    const error = valStr === ''
+      ? `${label} is required.`
+      : !Number.isFinite(numericValue)
+        ? `${label} must be a valid number.`
+        : numericValue < 0
+          ? `${label} cannot be below 0.`
+          : numericValue > max
+            ? `${label} cannot exceed ${max}.`
+            : null;
+    setReceptionScoreErrors(prev => {
+      const next = { ...prev };
+      if (error) {
+        next[errorKey] = error;
+      } else {
+        delete next[errorKey];
+      }
+      return next;
     });
+    setFormReceptionScores(prev => {
+      const existing = prev[subId] || { test: '0', cbt: '0', exam: '0' };
+      return { ...prev, [subId]: { ...existing, [field]: valStr } };
+    });
+  };
+
+  const collectReceptionScoreErrors = (subjectsToCheck: Subject[]) => {
+    const nextErrors: Record<string, string> = {};
+    subjectsToCheck.forEach(sub => {
+      const scores = formReceptionScores[sub.id] || { test: '0', cbt: '0', exam: '0' };
+      ([
+        ['test', scores.test, 40, 'Reception CA'],
+        ['exam', scores.exam, 60, 'Reception exam'],
+      ] as const).forEach(([field, value, max, label]) => {
+        const numericValue = Number(value);
+        const message = value === ''
+          ? `${label} is required.`
+          : !Number.isFinite(numericValue)
+            ? `${label} must be a valid number.`
+            : numericValue < 0
+              ? `${label} cannot be below 0.`
+              : numericValue > max
+                ? `${label} cannot exceed ${max}.`
+                : null;
+        if (message) nextErrors[`${sub.id}:${field}`] = message;
+      });
+    });
+    return nextErrors;
   };
 
   // Save Modal Form
@@ -322,9 +367,20 @@ export default function EarlyYearsResultEditor({
           return;
         }
 
+        const currentErrors = collectReceptionScoreErrors(targetSubjects);
+        setReceptionScoreErrors(currentErrors);
+        if (Object.keys(currentErrors).length > 0) {
+          triggerNotification('Please fix highlighted Reception score errors before saving.');
+          setIsSaving(false);
+          return;
+        }
+
         const updatedAcademicRecords: ResultRecord[] = targetSubjects.map(sub => {
-          const scores = formReceptionScores[sub.id] || { test: 0, cbt: 0, exam: 0 };
-          const total = scores.test + scores.cbt + scores.exam;
+          const scores = formReceptionScores[sub.id] || { test: '0', cbt: '0', exam: '0' };
+          const testScore = Number(scores.test);
+          const cbtScore = Number(scores.cbt);
+          const examScore = Number(scores.exam);
+          const total = testScore + cbtScore + examScore;
           let grade = 'F';
           if (total >= 70) grade = 'A';
           else if (total >= 60) grade = 'B';
@@ -339,9 +395,9 @@ export default function EarlyYearsResultEditor({
             subjectId: sub.id,
             term: selectedTerm,
             session: activeSessionName,
-            testScore: scores.test,
-            assignmentScore: scores.cbt,
-            examScore: scores.exam,
+            testScore,
+            assignmentScore: cbtScore,
+            examScore,
             totalScore: total,
             grade,
             teacherRemark: '',
@@ -427,7 +483,7 @@ export default function EarlyYearsResultEditor({
   const receptionSubjects = subjects.filter(s => assignedSubjectIds.includes(s.id));
 
   return (
-    <div className="w-full bg-[#0b0f19] text-slate-100 min-h-screen p-4 sm:p-6 font-sans">
+    <div className="w-full bg-slate-50 text-slate-800 min-h-screen p-4 sm:p-6 font-sans">
       {/* Toast Notification */}
       {notif && (
         <div className="fixed top-5 right-5 z-50 bg-indigo-600 text-white px-4 py-2.5 rounded-md shadow-xl text-xs font-bold flex items-center gap-2 border border-indigo-400">
@@ -439,32 +495,32 @@ export default function EarlyYearsResultEditor({
       {/* Main Container */}
       <div className="max-w-7xl mx-auto space-y-4">
         {/* Top Header & Breadcrumb */}
-        <div className="flex flex-wrap justify-between items-center gap-4 border-b border-slate-800/80 pb-3">
+        <div className="flex flex-wrap justify-between items-center gap-4 border-b border-slate-200 pb-3">
           <div>
-            <h1 className="text-xl font-black text-slate-100 tracking-tight">Process Class Results</h1>
-            <p className="text-xs text-slate-400 mt-0.5">
-              Dashboard / Classroom / Process Results / <span className="text-indigo-400 font-bold">{selectedClass}</span>
+            <h1 className="text-xl font-black text-slate-900 tracking-tight">Process Class Results</h1>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Dashboard / Classroom / Process Results / <span className="text-indigo-600 font-bold">{selectedClass}</span>
             </p>
           </div>
 
           <div className="flex items-center gap-2">
             <button 
               onClick={handleImportScores}
-              className="px-3 py-1.5 bg-slate-800/80 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+              className="px-3 py-1.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
             >
               <Upload size={13} />
               <span>Import exam scores</span>
             </button>
             <button 
               onClick={handleDownloadTemplate}
-              className="px-3 py-1.5 bg-slate-800/80 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+              className="px-3 py-1.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
             >
               <Download size={13} />
               <span>Download template</span>
             </button>
             <button 
               onClick={() => window.history.back()}
-              className="px-3 py-1.5 bg-purple-900/50 hover:bg-purple-800/80 text-purple-200 border border-purple-700/50 rounded text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+              className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 rounded text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
             >
               <ArrowLeft size={13} />
               <span>Back</span>
@@ -473,19 +529,19 @@ export default function EarlyYearsResultEditor({
         </div>
 
         {/* Info Banner Bar */}
-        <div className="bg-[#141b2d] border border-slate-800 rounded-lg p-3.5 flex flex-wrap items-center justify-between gap-4 text-xs">
+        <div className="bg-white border border-slate-200 rounded-lg p-3.5 flex flex-wrap items-center justify-between gap-4 text-xs shadow-xs">
           <div className="flex flex-wrap items-center gap-4 font-semibold tracking-wide">
-            <div>TERM: <span className="text-indigo-400 font-bold">{selectedTerm}</span></div>
-            <div>SESSION: <span className="text-indigo-400 font-bold">{activeSessionName}</span></div>
-            <div>TOTAL IN CLASS: <span className="text-slate-200 font-bold">{classStudents.length}</span></div>
-            <div>MALE: <span className="text-slate-200 font-bold">{maleCount}</span></div>
-            <div>FEMALE: <span className="text-slate-200 font-bold">{femaleCount}</span></div>
+            <div>TERM: <span className="text-indigo-600 font-bold">{selectedTerm}</span></div>
+            <div>SESSION: <span className="text-indigo-600 font-bold">{activeSessionName}</span></div>
+            <div>TOTAL IN CLASS: <span className="text-slate-900 font-bold">{classStudents.length}</span></div>
+            <div>MALE: <span className="text-slate-900 font-bold">{maleCount}</span></div>
+            <div>FEMALE: <span className="text-slate-900 font-bold">{femaleCount}</span></div>
           </div>
 
           <div className="flex items-center gap-2">
             <button 
               onClick={handleRefreshData} 
-              className="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer"
+              className="px-3 py-1 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer"
             >
               <RefreshCw size={12} />
               <span>Refresh</span>
@@ -501,11 +557,11 @@ export default function EarlyYearsResultEditor({
         </div>
 
         {/* Student Roster Table */}
-        <div className="bg-[#111726] border border-slate-800 rounded-lg overflow-hidden shadow-xl">
+        <div className="bg-white border border-slate-200 rounded-lg overflow-hidden shadow-xs">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
-                <tr className="bg-[#182035] text-slate-300 uppercase font-bold border-b border-slate-800 text-[11px] tracking-wider">
+                <tr className="bg-slate-100 text-slate-600 uppercase font-bold border-b border-slate-200 text-[11px] tracking-wider">
                   <th className="py-3 px-4 w-12 text-center">#</th>
                   <th className="py-3 px-4">Student Name</th>
                   <th className="py-3 px-4 w-28">Gender</th>
@@ -513,28 +569,28 @@ export default function EarlyYearsResultEditor({
                   <th className="py-3 px-4 w-96 text-center">Options</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/60 text-slate-200 font-medium">
+              <tbody className="divide-y divide-slate-100 text-slate-700 font-medium">
                 {classStudents.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="py-8 text-center text-slate-500 text-xs">
+                    <td colSpan={5} className="py-8 text-center text-slate-400 text-xs">
                       No students enrolled in {selectedClass} Arm {selectedArm}
                     </td>
                   </tr>
                 ) : (
                   classStudents.map((std, idx) => (
-                    <tr key={std.id} className="hover:bg-slate-800/40 transition-colors">
+                    <tr key={std.id} className="hover:bg-slate-50 transition-colors">
                       <td className="py-3 px-4 text-center font-mono text-slate-400">{idx + 1}</td>
                       <td className="py-3 px-4">
-                        <div className="font-semibold text-slate-200">{std.firstName} {std.lastName}</div>
-                        <div className="text-[10px] font-mono text-indigo-400">{std.admissionNo}</div>
+                        <div className="font-semibold text-slate-900">{std.firstName} {std.lastName}</div>
+                        <div className="text-[10px] font-mono text-indigo-600">{std.admissionNo}</div>
                       </td>
-                      <td className="py-3 px-4 text-slate-400">{std.gender}</td>
-                      <td className="py-3 px-4 text-slate-400 font-mono text-[11px]">{std.parentPhone || '09000000000'}</td>
+                      <td className="py-3 px-4 text-slate-500">{std.gender}</td>
+                      <td className="py-3 px-4 text-slate-500 font-mono text-[11px]">{std.parentPhone || '09000000000'}</td>
                       <td className="py-3 px-4">
                         <div className="flex items-center justify-center gap-1.5">
                           <button
                             onClick={() => handleOpenModal(std.id)}
-                            className="px-2.5 py-1 bg-indigo-950/80 hover:bg-indigo-900/90 text-indigo-300 border border-indigo-700/60 rounded text-[11px] font-semibold flex items-center gap-1 transition-colors"
+                            className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white border border-indigo-600 rounded text-[11px] font-semibold flex items-center gap-1 transition-colors"
                           >
                             <Edit size={12} />
                             <span>Edit/Enter Scores</span>
@@ -547,7 +603,7 @@ export default function EarlyYearsResultEditor({
                                 triggerNotification(`Generated EOT Report for ${std.firstName}`);
                               }
                             }}
-                            className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded text-[11px] font-semibold flex items-center gap-1 transition-colors cursor-pointer"
+                            className="px-2.5 py-1 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded text-[11px] font-semibold flex items-center gap-1 transition-colors cursor-pointer"
                           >
                             <FileText size={12} />
                             <span>EOT Report</span>
@@ -560,13 +616,13 @@ export default function EarlyYearsResultEditor({
                                 triggerNotification(`Generated EOS Report for ${std.firstName}`);
                               }
                             }}
-                            className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded text-[11px] font-semibold flex items-center gap-1 transition-colors cursor-pointer"
+                            className="px-2.5 py-1 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded text-[11px] font-semibold flex items-center gap-1 transition-colors cursor-pointer"
                           >
                             <FileText size={12} />
                             <span>EOS Report</span>
                           </button>
                           <button
-                            className="p-1 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded transition-colors"
+                            className="p-1 bg-white hover:bg-slate-50 text-slate-500 border border-slate-200 rounded transition-colors"
                             title="More Options"
                           >
                             <Menu size={13} />
@@ -584,67 +640,67 @@ export default function EarlyYearsResultEditor({
 
       {/* Score Modal Window */}
       {evalStudentId && activeStudent && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-5">
-          <div className="bg-[#0e1424] border border-slate-700/80 rounded-lg shadow-2xl w-full max-w-5xl max-h-[92vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-50 bg-slate-900/35 backdrop-blur-sm flex items-center justify-center p-3 sm:p-5">
+          <div className="bg-white border border-slate-200 rounded-lg shadow-2xl w-full max-w-5xl max-h-[92vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
             {/* Modal Subtitle & Top Bar */}
-            <div className="bg-[#0a0e19] px-4 py-2 border-b border-slate-800 flex justify-between items-center text-xs text-slate-400">
-              <span className="font-semibold text-slate-300">Enter / Edit examination scores</span>
+            <div className="bg-slate-50 px-4 py-2 border-b border-slate-200 flex justify-between items-center text-xs text-slate-500">
+              <span className="font-semibold text-slate-700">Enter / Edit examination scores</span>
               <button 
                 onClick={handleCloseModal}
-                className="text-slate-400 hover:text-white p-1 rounded transition-colors"
+                className="text-slate-400 hover:text-slate-700 p-1 rounded transition-colors"
               >
                 <X size={16} />
               </button>
             </div>
 
             {/* Modal Main Banner Header */}
-            <div className="bg-[#12192c] py-4 px-6 text-center border-b border-slate-800/80">
-              <h2 className="text-lg sm:text-xl font-black text-indigo-400 tracking-tight">
-                Add or Edit examination scores for <span className="text-white">{activeStudent.firstName} {activeStudent.lastName}</span>
+            <div className="bg-white py-4 px-6 text-center border-b border-slate-200">
+              <h2 className="text-lg sm:text-xl font-black text-indigo-700 tracking-tight">
+                Add or Edit examination scores for <span className="text-slate-900">{activeStudent.firstName} {activeStudent.lastName}</span>
               </h2>
-              <p className="text-xs font-semibold text-indigo-300 mt-1">
+              <p className="text-xs font-semibold text-indigo-600 mt-1">
                 {selectedClass} - {selectedTerm}, {activeSessionName}
               </p>
             </div>
 
             {/* Modal Table Body Area */}
-            <div className="flex-1 overflow-y-auto p-3 sm:p-4 bg-[#0a0e1a]">
+            <div className="flex-1 overflow-y-auto p-3 sm:p-4 bg-slate-50">
               {/* Terminal Attendance Register Section */}
-              <div className="bg-[#141b2d] border border-slate-800 rounded-lg p-3 mb-4 flex flex-wrap items-center justify-between gap-3 text-xs">
-                <div className="flex items-center gap-2 font-bold text-slate-300 uppercase tracking-wider">
-                  <CalendarCheck size={16} className="text-indigo-400" />
+              <div className="bg-white border border-slate-200 rounded-lg p-3 mb-4 flex flex-wrap items-center justify-between gap-3 text-xs">
+                <div className="flex items-center gap-2 font-bold text-slate-700 uppercase tracking-wider">
+                  <CalendarCheck size={16} className="text-indigo-600" />
                   <span>Terminal Attendance Register</span>
                 </div>
                 <div className="flex flex-wrap items-center gap-4">
                   <div className="flex items-center gap-1.5">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase">School Opened:</span>
+                    <span className="text-[10px] font-bold text-slate-500 uppercase">School Opened:</span>
                     <input
                       type="number"
                       min={1}
                       max={150}
                       value={totalDaysOpened}
                       onChange={(e) => setTotalDaysOpened(Math.max(1, Number(e.target.value) || 60))}
-                      className="w-16 text-center py-1 px-1.5 bg-[#0a0e1a] border border-slate-700 rounded text-xs font-bold font-mono text-slate-200 focus:outline-none focus:border-indigo-500"
+                      className="w-16 text-center py-1 px-1.5 bg-white border border-slate-200 rounded text-xs font-bold font-mono text-slate-700 focus:outline-none focus:border-indigo-500"
                     />
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase">Days Present:</span>
+                    <span className="text-[10px] font-bold text-slate-500 uppercase">Days Present:</span>
                     <input
                       type="number"
                       min={0}
                       max={totalDaysOpened}
                       value={manualDaysPresent}
                       onChange={(e) => setManualDaysPresent(Math.min(totalDaysOpened, Math.max(0, Number(e.target.value) || 0)))}
-                      className="w-16 text-center py-1 px-1.5 bg-[#0a0e1a] border border-slate-700 rounded text-xs font-bold font-mono text-emerald-400 focus:outline-none focus:border-indigo-500"
+                      className="w-16 text-center py-1 px-1.5 bg-white border border-slate-200 rounded text-xs font-bold font-mono text-emerald-700 focus:outline-none focus:border-indigo-500"
                     />
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase">Days Absent:</span>
-                    <span className="text-xs font-bold font-mono text-rose-400 px-2 py-1 bg-[#0a0e1a] border border-slate-700 rounded">
+                    <span className="text-[10px] font-bold text-slate-500 uppercase">Days Absent:</span>
+                    <span className="text-xs font-bold font-mono text-rose-700 px-2 py-1 bg-white border border-slate-200 rounded">
                       {manualDaysAbsent}
                     </span>
                   </div>
-                  <span className="text-xs font-black font-mono text-indigo-300 bg-indigo-950/60 py-1 px-2.5 rounded border border-indigo-700/60">
+                  <span className="text-xs font-black font-mono text-indigo-700 bg-indigo-50 py-1 px-2.5 rounded border border-indigo-100">
                     {attendancePercentage}% Attended
                   </span>
                 </div>
@@ -654,32 +710,32 @@ export default function EarlyYearsResultEditor({
                 /* Toddler / Pre-School 1 & 2 Checklist Table */
                 classAssessmentItems.length === 0 ? (
                   <div className="py-12 text-center text-slate-400 text-xs">
-                    <p className="font-semibold text-slate-300">No assessment items defined for {selectedClass}.</p>
+                    <p className="font-semibold text-slate-600">No assessment items defined for {selectedClass}.</p>
                     <p className="text-[11px] text-slate-500 mt-1">Please configure assessment items for {selectedClass} in Subject Management / Assessment Items.</p>
                   </div>
                 ) : (
-                  <table className="w-full text-left text-xs border-collapse border border-slate-800">
+                  <table className="w-full text-left text-xs border-collapse border border-slate-200 bg-white rounded-lg overflow-hidden">
                     <thead>
-                      <tr className="bg-[#151c30] text-slate-200 font-bold uppercase border-b border-slate-800 text-[11px] tracking-wider">
-                        <th className="py-2.5 px-3 w-10 text-center border-r border-slate-800">#</th>
-                        <th className="py-2.5 px-3 border-r border-slate-800">SUBJECT / ASSESSMENT ITEM</th>
-                        <th className="py-2.5 px-2 w-24 text-center border-r border-slate-800">EXCELLENT</th>
-                        <th className="py-2.5 px-2 w-24 text-center border-r border-slate-800">VERY GOOD</th>
-                        <th className="py-2.5 px-2 w-24 text-center border-r border-slate-800">GOOD</th>
-                        <th className="py-2.5 px-2 w-24 text-center border-r border-slate-800">FAIR</th>
+                      <tr className="bg-slate-100 text-slate-600 font-bold uppercase border-b border-slate-200 text-[11px] tracking-wider">
+                        <th className="py-2.5 px-3 w-10 text-center border-r border-slate-200">#</th>
+                        <th className="py-2.5 px-3 border-r border-slate-200">SUBJECT / ASSESSMENT ITEM</th>
+                        <th className="py-2.5 px-2 w-24 text-center border-r border-slate-200">EXCELLENT</th>
+                        <th className="py-2.5 px-2 w-24 text-center border-r border-slate-200">VERY GOOD</th>
+                        <th className="py-2.5 px-2 w-24 text-center border-r border-slate-200">GOOD</th>
+                        <th className="py-2.5 px-2 w-24 text-center border-r border-slate-200">FAIR</th>
                         <th className="py-2.5 px-2 w-20 text-center">OPTION</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-800/60 font-medium text-slate-200">
+                    <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
                       {classAssessmentItems.map((item, idx) => {
                         const currentVal = formRatings[item.id] ?? formRatings[idx] ?? '';
                         return (
-                          <tr key={item.id} className="hover:bg-slate-800/40 transition-colors">
-                            <td className="py-2 px-3 text-center font-mono text-slate-400 border-r border-slate-800/60">{idx + 1}</td>
-                            <td className="py-2 px-3 text-slate-200 text-xs border-r border-slate-800/60">{item.name || item.title}</td>
+                          <tr key={item.id} className="hover:bg-slate-50 transition-colors">
+                            <td className="py-2 px-3 text-center font-mono text-slate-400 border-r border-slate-100">{idx + 1}</td>
+                            <td className="py-2 px-3 text-slate-700 text-xs border-r border-slate-100">{item.name || item.title}</td>
                             
                             {/* EXCELLENT */}
-                            <td className="py-2 px-2 text-center border-r border-slate-800/60">
+                            <td className="py-2 px-2 text-center border-r border-slate-100">
                               <input 
                                 type="radio" 
                                 name={`item_radio_${item.id}`}
@@ -690,7 +746,7 @@ export default function EarlyYearsResultEditor({
                             </td>
 
                             {/* VERY GOOD */}
-                            <td className="py-2 px-2 text-center border-r border-slate-800/60">
+                            <td className="py-2 px-2 text-center border-r border-slate-100">
                               <input 
                                 type="radio" 
                                 name={`item_radio_${item.id}`}
@@ -701,7 +757,7 @@ export default function EarlyYearsResultEditor({
                             </td>
 
                             {/* GOOD */}
-                            <td className="py-2 px-2 text-center border-r border-slate-800/60">
+                            <td className="py-2 px-2 text-center border-r border-slate-100">
                               <input 
                                 type="radio" 
                                 name={`item_radio_${item.id}`}
@@ -712,7 +768,7 @@ export default function EarlyYearsResultEditor({
                             </td>
 
                             {/* FAIR */}
-                            <td className="py-2 px-2 text-center border-r border-slate-800/60">
+                            <td className="py-2 px-2 text-center border-r border-slate-100">
                               <input 
                                 type="radio" 
                                 name={`item_radio_${item.id}`}
@@ -743,59 +799,65 @@ export default function EarlyYearsResultEditor({
                 /* Reception Academic Score Grid */
                 receptionSubjects.length === 0 ? (
                   <div className="py-12 text-center text-slate-400 text-xs">
-                    <p className="font-semibold text-slate-300">No subjects assigned to {selectedClass}.</p>
+                    <p className="font-semibold text-slate-600">No subjects assigned to {selectedClass}.</p>
                     <p className="text-[11px] text-slate-500 mt-1">Please assign subjects to {selectedClass} in Subject Management.</p>
                   </div>
                 ) : (
-                  <table className="w-full text-left text-xs border-collapse border border-slate-800">
+                  <table className="w-full text-left text-xs border-collapse border border-slate-200 bg-white rounded-lg overflow-hidden">
                     <thead>
-                      <tr className="bg-[#151c30] text-slate-200 font-bold uppercase border-b border-slate-800 text-[11px] tracking-wider">
-                        <th className="py-2.5 px-3 w-10 text-center border-r border-slate-800">#</th>
-                        <th className="py-2.5 px-3 border-r border-slate-800">SUBJECT</th>
-                        <th className="py-2.5 px-3 w-32 text-center border-r border-slate-800">TEST / CA (40)</th>
-                        <th className="py-2.5 px-3 w-32 text-center border-r border-slate-800">EXAM (60)</th>
-                        <th className="py-2.5 px-3 w-32 text-center border-r border-slate-800">TOTAL (100)</th>
+                      <tr className="bg-slate-100 text-slate-600 font-bold uppercase border-b border-slate-200 text-[11px] tracking-wider">
+                        <th className="py-2.5 px-3 w-10 text-center border-r border-slate-200">#</th>
+                        <th className="py-2.5 px-3 border-r border-slate-200">SUBJECT</th>
+                        <th className="py-2.5 px-3 w-32 text-center border-r border-slate-200">TEST / CA (40)</th>
+                        <th className="py-2.5 px-3 w-32 text-center border-r border-slate-200">EXAM (60)</th>
+                        <th className="py-2.5 px-3 w-32 text-center border-r border-slate-200">TOTAL (100)</th>
                         <th className="py-2.5 px-3 w-20 text-center">OPTION</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-800/60 font-medium text-slate-200">
+                    <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
                       {receptionSubjects.map((sub, idx) => {
-                        const scores = formReceptionScores[sub.id] || { test: 0, cbt: 0, exam: 0 };
-                        const total = (scores.test || 0) + (scores.exam || 0);
+                        const scores = formReceptionScores[sub.id] || { test: '0', cbt: '0', exam: '0' };
+                        const testScore = Number(scores.test);
+                        const examScore = Number(scores.exam);
+                        const total = (Number.isFinite(testScore) ? testScore : 0) + (Number.isFinite(examScore) ? examScore : 0);
+                        const testError = receptionScoreErrors[`${sub.id}:test`];
+                        const examError = receptionScoreErrors[`${sub.id}:exam`];
 
                         return (
-                          <tr key={sub.id} className="hover:bg-slate-800/40 transition-colors">
-                            <td className="py-2 px-3 text-center font-mono text-slate-400 border-r border-slate-800/60">{idx + 1}</td>
-                            <td className="py-2 px-3 text-slate-200 text-xs border-r border-slate-800/60">{sub.name}</td>
+                          <tr key={sub.id} className="hover:bg-slate-50 transition-colors">
+                            <td className="py-2 px-3 text-center font-mono text-slate-400 border-r border-slate-100">{idx + 1}</td>
+                            <td className="py-2 px-3 text-slate-700 text-xs border-r border-slate-100">{sub.name}</td>
                             
                             {/* TEST / CA (40) */}
-                            <td className="py-2 px-3 text-center border-r border-slate-800/60">
+                            <td className="py-2 px-3 text-center border-r border-slate-100">
                               <input 
                                 type="number"
                                 min="0"
                                 max="40"
-                                value={scores.test || ''}
+                                value={scores.test}
                                 placeholder="CA score (40)"
                                 onChange={(e) => handleScoreChange(sub.id, 'test', e.target.value)}
-                                className="w-20 bg-[#0f1628] border border-slate-700 text-slate-100 text-center rounded px-2 py-1 text-xs focus:outline-none focus:border-indigo-500"
+                                className="w-20 bg-white border border-slate-200 text-slate-800 text-center rounded px-2 py-1 text-xs focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
                               />
+                              {testError && <p className="mt-1 text-[9px] font-bold text-red-600">{testError}</p>}
                             </td>
 
                             {/* EXAM (60) */}
-                            <td className="py-2 px-3 text-center border-r border-slate-800/60">
+                            <td className="py-2 px-3 text-center border-r border-slate-100">
                               <input 
                                 type="number"
                                 min="0"
                                 max="60"
-                                value={scores.exam || ''}
+                                value={scores.exam}
                                 placeholder="Exam score (60)"
                                 onChange={(e) => handleScoreChange(sub.id, 'exam', e.target.value)}
-                                className="w-20 bg-[#0f1628] border border-slate-700 text-slate-100 text-center rounded px-2 py-1 text-xs focus:outline-none focus:border-indigo-500"
+                                className="w-20 bg-white border border-slate-200 text-slate-800 text-center rounded px-2 py-1 text-xs focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
                               />
+                              {examError && <p className="mt-1 text-[9px] font-bold text-red-600">{examError}</p>}
                             </td>
 
                             {/* TOTAL (100) */}
-                            <td className="py-2 px-3 text-center border-r border-slate-800/60 font-mono font-bold text-indigo-300">
+                            <td className="py-2 px-3 text-center border-r border-slate-100 font-mono font-bold text-indigo-700">
                               {total}
                             </td>
 
@@ -813,12 +875,12 @@ export default function EarlyYearsResultEditor({
             </div>
 
             {/* Modal Bottom Buttons */}
-            <div className="p-3.5 bg-[#0e1424] border-t border-slate-800 flex justify-center items-center gap-3">
+            <div className="p-3.5 bg-white border-t border-slate-200 flex justify-center items-center gap-3">
               <button
                 type="button"
                 onClick={handleCloseModal}
                 disabled={isSaving}
-                className="px-6 py-1.5 rounded text-xs font-bold bg-purple-950 hover:bg-purple-900 text-purple-200 border border-purple-700/50 transition-colors disabled:opacity-50"
+                className="px-6 py-1.5 rounded text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 transition-colors disabled:opacity-50"
               >
                 Close
               </button>

@@ -18,12 +18,14 @@ import {
   List,
   ArrowLeft,
   Edit,
-  BookOpen
+  BookOpen,
+  BarChart3
 } from 'lucide-react';
 import { Student, ResultRecord, SchoolTerm, Subject, UserRole, Teacher, SchoolConfigState } from '../types';
 import ParentStudentResultViewer from './ParentStudentResultViewer';
 import ReportCardPrintout from './ReportCardPrintout';
 import { Alert, PageHeader, Tabs } from './shared';
+import ResultsBroadsheet from './ResultsBroadsheet';
 
 const unpackScores = (r: ResultRecord) => {
   const ca1 = r.testScore || 0;
@@ -183,6 +185,33 @@ export default function ResultProcessor({
     }
   }, [availableClasses, selectedClass]);
 
+  const teacherBroadsheetSubjects = React.useMemo(() => {
+    if (isAdminOrSuper || !loggedInTeacher?.classesAssigned) return subjects;
+    const allowedSubjectIds = new Set<string>();
+    loggedInTeacher.classesAssigned.forEach(assignment => {
+      if (assignment.subjectId === 'general_admin') {
+        const blueprint = classesWithSubjects.find(item =>
+          item.classId?.toLowerCase() === assignment.classId?.toLowerCase()
+        );
+        (blueprint?.subjects || []).forEach(subjectId => allowedSubjectIds.add(subjectId));
+      } else {
+        allowedSubjectIds.add(assignment.subjectId);
+      }
+    });
+    return subjects.filter(subject => allowedSubjectIds.has(subject.id));
+  }, [classesWithSubjects, isAdminOrSuper, loggedInTeacher, subjects]);
+
+  const teacherBroadsheetClassesWithSubjects = React.useMemo(() => {
+    const allowedClassSet = new Set(availableClasses.map(classId => classId.toLowerCase()));
+    const allowedSubjectSet = new Set(teacherBroadsheetSubjects.map(subject => subject.id));
+    return classesWithSubjects
+      .filter(item => allowedClassSet.has(item.classId?.toLowerCase()))
+      .map(item => ({
+        ...item,
+        subjects: (item.subjects || []).filter(subjectId => allowedSubjectSet.has(subjectId))
+      }));
+  }, [availableClasses, classesWithSubjects, teacherBroadsheetSubjects]);
+
   // Search and show entries list states
   const [searchText, setSearchText] = useState('');
   const [entriesCount, setEntriesCount] = useState(10);
@@ -208,7 +237,7 @@ export default function ResultProcessor({
   const [activeViewMode, setActiveViewMode] = useState<'LIST' | 'EOT' | 'EOS' | 'SCORES'>('LIST');
 
   const [notif, setNotif] = useState<string | null>(null);
-  const [processorSubTab, setProcessorSubTab] = useState<'DIRECTORY' | 'APPROVAL_DASHBOARD'>('DIRECTORY');
+  const [processorSubTab, setProcessorSubTab] = useState<'DIRECTORY' | 'APPROVAL_DASHBOARD' | 'BROADSHEET'>('DIRECTORY');
 
   const [resultApprovals, setResultApprovals] = useState<any[]>([]);
   const [selectedApprovalToReview, setSelectedApprovalToReview] = useState<any | null>(null);
@@ -907,6 +936,7 @@ export default function ResultProcessor({
           <Tabs
             items={[
               { id: 'DIRECTORY', label: 'Class Roster Directory', icon: <List size={14} /> },
+              { id: 'BROADSHEET', label: 'Broadsheet', icon: <BarChart3 size={14} /> },
               { id: 'APPROVAL_DASHBOARD', label: 'Workflow Approval Dashboard', count: pendingSubmissionsCount, icon: <Check size={14} /> }
             ]}
             active={processorSubTab}
@@ -914,7 +944,46 @@ export default function ResultProcessor({
           />
         )}
 
-        {processorSubTab === 'APPROVAL_DASHBOARD' && isAdminOrSuper ? (
+        {currentRole === 'TEACHER' && (
+          <div className="inline-flex rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-1 text-xs font-bold shadow-xs">
+            <button
+              type="button"
+              onClick={() => setProcessorSubTab('DIRECTORY')}
+              className={`px-3.5 py-1.5 rounded-md transition-all ${
+                processorSubTab === 'DIRECTORY'
+                  ? 'bg-blue-600 text-white shadow-3xs'
+                  : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
+              }`}
+            >
+              Classes
+            </button>
+            <button
+              type="button"
+              onClick={() => setProcessorSubTab('BROADSHEET')}
+              className={`px-3.5 py-1.5 rounded-md transition-all ${
+                processorSubTab === 'BROADSHEET'
+                  ? 'bg-blue-600 text-white shadow-3xs'
+                  : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
+              }`}
+            >
+              Broadsheet
+            </button>
+          </div>
+        )}
+
+        {processorSubTab === 'BROADSHEET' && (isAdminOrSuper || currentRole === 'TEACHER') ? (
+          <ResultsBroadsheet
+            students={currentRole === 'TEACHER' ? allProcessedStudentsList : students}
+            results={results}
+            subjects={currentRole === 'TEACHER' ? teacherBroadsheetSubjects : subjects}
+            classes={availableClasses}
+            activeSessionName={activeSessionName}
+            activeTerm={selectedTerm}
+            gradingScale={gradingScale}
+            config={config}
+            classesWithSubjects={currentRole === 'TEACHER' ? teacherBroadsheetClassesWithSubjects : classesWithSubjects}
+          />
+        ) : processorSubTab === 'APPROVAL_DASHBOARD' && isAdminOrSuper ? (
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-xs space-y-6">
             <div className="pb-4 border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div>

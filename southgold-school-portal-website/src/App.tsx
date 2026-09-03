@@ -320,6 +320,7 @@ export default function App({ initialCms }: { initialCms?: any }) {
   };
 
   const handleSetResults = async (newResults: ResultRecord[]) => {
+    const previousResults = results;
     setResults(newResults);
     try {
       const changed = newResults.filter(nr => {
@@ -328,14 +329,20 @@ export default function App({ initialCms }: { initialCms?: any }) {
       });
 
       if (changed.length > 0) {
-        await fetch('/api/results', {
+        const response = await fetch('/api/results', {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(changed)
         });
+        if (!response.ok) {
+          const body = await response.json().catch(() => null);
+          throw new Error(body?.error || 'Failed to save results');
+        }
       }
     } catch (err) {
       console.error('Error in results REST update:', err);
+      setResults(previousResults);
+      throw err;
     }
   };
 
@@ -734,6 +741,7 @@ export default function App({ initialCms }: { initialCms?: any }) {
             parents={parents}
             onSetParents={handleSetParents}
             userEmail={userEmail}
+            config={config}
           />
         );
       case 'attendance':
@@ -772,6 +780,7 @@ export default function App({ initialCms }: { initialCms?: any }) {
             parents={parents}
             onSetParents={handleSetParents}
             userEmail={userEmail}
+            config={config}
           />
         );
       case 'results':

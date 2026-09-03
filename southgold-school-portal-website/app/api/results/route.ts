@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import * as repo from '../../../src/server/repo';
 import { requireRole } from '../../../src/server/routeAuth';
+import { ResultScoreValidationException } from '../../../src/lib/resultScoreValidation';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,7 +12,8 @@ export async function GET(request: Request) {
   try {
     return NextResponse.json(await repo.Results.list());
   } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: 500 });
+    const status = e instanceof ResultScoreValidationException ? 400 : 500;
+    return NextResponse.json({ error: e.message }, { status });
   }
 }
 
@@ -25,7 +27,8 @@ export async function POST(request: Request) {
     await repo.Results.insert([r]);
     return NextResponse.json(r, { status: 201 });
   } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: 500 });
+    const status = e instanceof ResultScoreValidationException ? 400 : 500;
+    return NextResponse.json({ error: e.message }, { status });
   }
 }
 
@@ -39,6 +42,7 @@ export async function PUT(request: Request) {
     await repo.Results.upsert(rows);
     return NextResponse.json({ success: true });
   } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: 500 });
+    const status = e instanceof ResultScoreValidationException ? 400 : 500;
+    return NextResponse.json({ error: e.message }, { status });
   }
 }

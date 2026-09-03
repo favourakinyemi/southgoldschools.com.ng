@@ -17,6 +17,12 @@ import {
 } from 'lucide-react';
 import { Student, ResultRecord, SchoolTerm, Subject, AssessmentItem } from '../types';
 import { isReceptionClass } from '../data/preschoolSkills';
+import {
+  buildResultScoreLimits,
+  validateResultScoreRecord,
+  validateScoreInput,
+  type ResultScoreField
+} from '../lib/resultScoreValidation';
 
 interface StudentScoresEditorProps {
   targetStudent: Student;
@@ -67,6 +73,8 @@ export default function StudentScoresEditor({
   // Steps state
   const [activeStep, setActiveStep] = useState<WorkflowStep>('ATTENDANCE');
   const [saveStatus, setSaveStatus] = useState<string | null>(null);
+  const [scoreErrors, setScoreErrors] = useState<Record<string, string>>({});
+  const [scoreDraftValues, setScoreDraftValues] = useState<Record<string, string>>({});
 
   const defaultGradingScale = [
     { grade: 'A', min: 75, remark: 'Excellent' },
@@ -198,6 +206,86 @@ export default function StudentScoresEditor({
   };
 
   const { total: totalScoreSum, avg: averageScore } = calculateStudentAverages();
+  const scoreLimits = buildResultScoreLimits({ caTestMax, caAssignmentMax, examMax });
+  const ca3Max = scoreLimits.ca3Max;
+
+  const getScoreErrorKey = (resultId: string, field: ResultScoreField) => `${resultId}:${field}`;
+
+  const getScoreInputValue = (resultId: string, field: ResultScoreField, currentValue: number) => {
+    const key = getScoreErrorKey(resultId, field);
+    return scoreDraftValues[key] ?? (currentValue === 0 ? '' : String(currentValue));
+  };
+
+  const setScoreInputDraft = (resultId: string, field: ResultScoreField, value: string, hasError: boolean) => {
+    const key = getScoreErrorKey(resultId, field);
+    setScoreDraftValues(prev => {
+      const next = { ...prev };
+      if (hasError) {
+        next[key] = value;
+      } else {
+        delete next[key];
+      }
+      return next;
+    });
+  };
+
+  const setFieldScoreError = (resultId: string, field: ResultScoreField, message: string | null) => {
+    const key = getScoreErrorKey(resultId, field);
+    setScoreErrors(prev => {
+      const next = { ...prev };
+      if (message) {
+        next[key] = message;
+      } else {
+        delete next[key];
+      }
+      return next;
+    });
+  };
+
+  const collectCurrentScoreErrors = () => {
+    const nextErrors: Record<string, string> = {};
+    targetStudentResults.forEach(result => {
+      validateResultScoreRecord(result, scoreLimits, { isReception }).forEach(error => {
+        nextErrors[getScoreErrorKey(result.id, error.field)] = error.message;
+      });
+    });
+    Object.entries(scoreDraftValues).forEach(([key, value]) => {
+      const [resultId, field] = key.split(':') as [string, ResultScoreField];
+      if (!resultId || !field) return;
+      const max = field === 'ca1'
+        ? (isReception ? scoreLimits.receptionCa1Max : scoreLimits.ca1Max)
+        : field === 'ca2'
+          ? scoreLimits.ca2Max
+          : field === 'ca3'
+            ? scoreLimits.ca3Max
+            : field === 'exam'
+              ? (isReception ? scoreLimits.receptionExamMax : scoreLimits.examMax)
+              : scoreLimits.totalMax;
+      const label = field === 'ca1'
+        ? (isReception ? 'Reception test / CA' : 'CA1')
+        : field === 'ca2'
+          ? 'CA2'
+          : field === 'ca3'
+            ? 'CA3'
+            : field === 'exam'
+              ? (isReception ? 'Reception exam' : 'Exam')
+              : 'Total';
+      const message = validateScoreInput(value, max, label);
+      if (message) nextErrors[key] = message;
+    });
+    return nextErrors;
+  };
+
+  const hasBlockingScoreErrors = () => {
+    const currentErrors = collectCurrentScoreErrors();
+    const mergedErrors = { ...currentErrors, ...scoreErrors };
+    setScoreErrors(mergedErrors);
+    if (Object.keys(mergedErrors).length > 0) {
+      triggerSaveNotice('Please fix highlighted score errors before saving.');
+      return true;
+    }
+    return false;
+  };
 
   const handleUpdateScore = (resultId: string, field: 'ca1' | 'ca2' | 'ca3' | 'exam' | 'teacherRemark', value: any) => {
     const isReception = isReceptionClass(targetStudent?.classId);
@@ -212,16 +300,39 @@ export default function StudentScoresEditor({
         let remark = item.teacherRemark;
 
         if (field === 'ca1') {
-          const maxVal = isReception ? 40 : 15;
-          ca1 = Math.min(maxVal, Math.max(0, Number(value) || 0));
+          const maxVal = isReception ? scoreLimits.receptionCa1Max : scoreLimits.ca1Max;
+          const message = validateScoreInput(value, maxVal, isReception ? 'Reception test / CA' : 'CA1');
+          setFieldScoreError(resultId, 'ca1', message);
+          setScoreInputDraft(resultId, 'ca1', String(value), !!message);
+          if (message) return item;
+          ca1 = Number(value);
         } else if (field === 'ca2') {
-          ca2 = isReception ? 0 : Math.min(15, Math.max(0, Number(value) || 0));
+          if (isReception) {
+            ca2 = 0;
+          } else {
+            const message = validateScoreInput(value, scoreLimits.ca2Max, 'CA2');
+            setFieldScoreError(resultId, 'ca2', message);
+            setScoreInputDraft(resultId, 'ca2', String(value), !!message);
+            if (message) return item;
+            ca2 = Number(value);
+          }
         } else if (field === 'ca3') {
-          ca3 = isReception ? 0 : Math.min(10, Math.max(0, Number(value) || 0));
+          if (isReception) {
+            ca3 = 0;
+          } else {
+            const message = validateScoreInput(value, ca3Max, 'CA3');
+            setFieldScoreError(resultId, 'ca3', message);
+            setScoreInputDraft(resultId, 'ca3', String(value), !!message);
+            if (message) return item;
+            ca3 = Number(value);
+          }
         } else if (field === 'exam') {
-          ca1 = isReception ? Math.min(40, ca1) : ca1;
-          const maxExam = isReception ? 60 : examMax;
-          exam = Math.min(maxExam, Math.max(0, Number(value) || 0));
+          const maxExam = isReception ? scoreLimits.receptionExamMax : scoreLimits.examMax;
+          const message = validateScoreInput(value, maxExam, isReception ? 'Reception exam' : 'Exam');
+          setFieldScoreError(resultId, 'exam', message);
+          setScoreInputDraft(resultId, 'exam', String(value), !!message);
+          if (message) return item;
+          exam = Number(value);
         } else if (field === 'teacherRemark') {
           remark = value;
         }
@@ -287,6 +398,7 @@ export default function StudentScoresEditor({
   };
 
   const handleSaveDraft = () => {
+    if (hasBlockingScoreErrors()) return;
     saveAttendanceData();
     const updated = allProcessedResultsList.map(item => {
       if (item.studentId === targetStudent.id && item.term === selectedTerm && item.session === activeSessionName) {
@@ -300,6 +412,7 @@ export default function StudentScoresEditor({
   };
 
   const handleFormallySubmitToAdmin = () => {
+    if (hasBlockingScoreErrors()) return;
     saveAttendanceData();
     const updated = allProcessedResultsList.map(item => {
       if (item.studentId === targetStudent.id && item.term === selectedTerm && item.session === activeSessionName) {
@@ -517,6 +630,10 @@ export default function StudentScoresEditor({
                     const scores = unpackScores(res);
                     const calculatedGrade = getCalculatedGrade(scores.total);
                     const isReception = isReceptionClass(targetStudent?.classId);
+                    const ca1Error = scoreErrors[getScoreErrorKey(res.id, 'ca1')];
+                    const ca2Error = scoreErrors[getScoreErrorKey(res.id, 'ca2')];
+                    const ca3Error = scoreErrors[getScoreErrorKey(res.id, 'ca3')];
+                    const examError = scoreErrors[getScoreErrorKey(res.id, 'exam')];
 
                     return (
                       <tr key={res.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-850/50 transition-colors">
@@ -529,10 +646,11 @@ export default function StudentScoresEditor({
                             type="number"
                             min={0}
                             max={isReception ? 40 : 15}
-                            value={scores.ca1 || ''}
+                            value={getScoreInputValue(res.id, 'ca1', scores.ca1)}
                             onChange={(e) => handleUpdateScore(res.id, 'ca1', e.target.value)}
                             className="w-16 text-center py-1.5 px-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold font-mono focus:ring-2 focus:ring-blue-500"
                           />
+                          {ca1Error && <p className="mt-1 text-[9px] font-bold text-red-600 dark:text-red-400">{ca1Error}</p>}
                         </td>
                         {!isReception && (
                           <td className="py-2 px-2 text-center">
@@ -540,10 +658,11 @@ export default function StudentScoresEditor({
                               type="number"
                               min={0}
                               max={15}
-                              value={scores.ca2 || ''}
+                              value={getScoreInputValue(res.id, 'ca2', scores.ca2)}
                               onChange={(e) => handleUpdateScore(res.id, 'ca2', e.target.value)}
                               className="w-16 text-center py-1.5 px-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold font-mono focus:ring-2 focus:ring-blue-500"
                             />
+                            {ca2Error && <p className="mt-1 text-[9px] font-bold text-red-600 dark:text-red-400">{ca2Error}</p>}
                           </td>
                         )}
                         {!isReception && (
@@ -552,10 +671,11 @@ export default function StudentScoresEditor({
                               type="number"
                               min={0}
                               max={10}
-                              value={scores.ca3 || ''}
+                              value={getScoreInputValue(res.id, 'ca3', scores.ca3)}
                               onChange={(e) => handleUpdateScore(res.id, 'ca3', e.target.value)}
                               className="w-16 text-center py-1.5 px-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold font-mono focus:ring-2 focus:ring-blue-500"
                             />
+                            {ca3Error && <p className="mt-1 text-[9px] font-bold text-red-600 dark:text-red-400">{ca3Error}</p>}
                           </td>
                         )}
                         <td className="py-2 px-2 text-center">
@@ -563,10 +683,11 @@ export default function StudentScoresEditor({
                             type="number"
                             min={0}
                             max={isReception ? 60 : examMax}
-                            value={scores.exam || ''}
+                            value={getScoreInputValue(res.id, 'exam', scores.exam)}
                             onChange={(e) => handleUpdateScore(res.id, 'exam', e.target.value)}
                             className="w-20 text-center py-1.5 px-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold font-mono focus:ring-2 focus:ring-blue-500"
                           />
+                          {examError && <p className="mt-1 text-[9px] font-bold text-red-600 dark:text-red-400">{examError}</p>}
                         </td>
                         <td className="py-2 px-2 text-center font-mono font-black text-sm text-slate-900 dark:text-slate-100">
                           {scores.total}
@@ -790,7 +911,7 @@ export default function StudentScoresEditor({
                     {isReception ? 'Continuous Assessment Test Scoresheet' : 'CA1 (Class work/Test) Scoresheet'}
                   </h4>
                   <span className="text-[10px] text-blue-600 dark:text-blue-400 font-bold bg-blue-50 dark:bg-blue-950/20 py-1 px-2.5 rounded-full">
-                    Max weight: {isReception ? 40 : 15} marks
+                    Max weight: {isReception ? scoreLimits.receptionCa1Max : scoreLimits.ca1Max} marks
                   </span>
                 </div>
 
@@ -810,7 +931,8 @@ export default function StudentScoresEditor({
                         const subObj = subjects.find(s => s.id === r.subjectId);
                         const readableName = subObj ? subObj.name : r.subjectId;
                         const scores = unpackScores(r);
-                        const maxVal = isReception ? 40 : 15;
+                        const maxVal = isReception ? scoreLimits.receptionCa1Max : scoreLimits.ca1Max;
+                        const scoreError = scoreErrors[getScoreErrorKey(r.id, 'ca1')];
                         return (
                           <tr key={r.id} className="hover:bg-slate-55/10 transition-colors">
                             <td className="py-3 px-4 font-bold text-slate-755 dark:text-slate-250 uppercase">{readableName}</td>
@@ -819,14 +941,13 @@ export default function StudentScoresEditor({
                                 type="number"
                                 min={0}
                                 max={maxVal}
-                                value={scores.ca1}
+                                value={getScoreInputValue(r.id, 'ca1', scores.ca1)}
                                 onChange={(e) => {
-                                  const val = Math.min(maxVal, Math.max(0, parseInt(e.target.value) || 0));
-                                  handleUpdateScore(r.id, 'ca1', val);
-                                  triggerSaveNotice(`Saved Test mark for ${readableName}`);
+                                  handleUpdateScore(r.id, 'ca1', e.target.value);
                                 }}
                                 className="w-24 bg-slate-50 dark:bg-slate-800 py-1.5 px-3 rounded border border-slate-200 dark:border-slate-700 text-center text-xs font-bold font-mono text-slate-800 dark:text-slate-100"
                               />
+                              {scoreError && <p className="mt-1 text-[9px] font-bold text-red-600 dark:text-red-400">{scoreError}</p>}
                             </td>
                             <td className="py-3 px-4 text-right pr-6 font-mono text-[10px] text-emerald-600 font-bold">
                               ✓ Verified Within Scope
@@ -862,6 +983,7 @@ export default function StudentScoresEditor({
                         const subObj = subjects.find(s => s.id === r.subjectId);
                         const readableName = subObj ? subObj.name : r.subjectId;
                         const scores = unpackScores(r);
+                        const scoreError = scoreErrors[getScoreErrorKey(r.id, 'ca2')];
                         return (
                           <tr key={r.id} className="hover:bg-slate-55/10 transition-colors">
                             <td className="py-3 px-4 font-bold text-slate-755 dark:text-slate-250 uppercase">{readableName}</td>
@@ -869,15 +991,14 @@ export default function StudentScoresEditor({
                               <input
                                 type="number"
                                 min={0}
-                                max={15}
-                                value={scores.ca2}
+                                max={scoreLimits.ca2Max}
+                                value={getScoreInputValue(r.id, 'ca2', scores.ca2)}
                                 onChange={(e) => {
-                                  const val = Math.min(15, Math.max(0, parseInt(e.target.value) || 0));
-                                  handleUpdateScore(r.id, 'ca2', val);
-                                  triggerSaveNotice(`Saved CA2 mark for ${readableName}`);
+                                  handleUpdateScore(r.id, 'ca2', e.target.value);
                                 }}
                                 className="w-24 bg-slate-50 dark:bg-slate-800 py-1.5 px-3 rounded border border-slate-200 dark:border-slate-700 text-center text-xs font-bold font-mono text-slate-800 dark:text-slate-100"
                               />
+                              {scoreError && <p className="mt-1 text-[9px] font-bold text-red-600 dark:text-red-400">{scoreError}</p>}
                             </td>
                             <td className="py-3 px-4 text-right pr-6 font-mono text-[10px] text-emerald-600 font-bold">
                               ✓ Verified Within Scope
@@ -896,7 +1017,7 @@ export default function StudentScoresEditor({
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
                   <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider font-display">CA3 (Project/Midterm) Scoresheet</h4>
-                  <span className="text-[10px] text-blue-600 dark:text-blue-400 font-bold bg-blue-50 dark:bg-blue-950/20 py-1 px-2.5 rounded-full">Max weight: 10 marks</span>
+                  <span className="text-[10px] text-blue-600 dark:text-blue-400 font-bold bg-blue-50 dark:bg-blue-950/20 py-1 px-2.5 rounded-full">Max weight: {ca3Max} marks</span>
                 </div>
 
                 <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden">
@@ -913,6 +1034,7 @@ export default function StudentScoresEditor({
                         const subObj = subjects.find(s => s.id === r.subjectId);
                         const readableName = subObj ? subObj.name : r.subjectId;
                         const scores = unpackScores(r);
+                        const scoreError = scoreErrors[getScoreErrorKey(r.id, 'ca3')];
                         return (
                           <tr key={r.id} className="hover:bg-slate-55/10 transition-colors">
                             <td className="py-3 px-4 font-bold text-slate-755 dark:text-slate-250 uppercase">{readableName}</td>
@@ -920,15 +1042,14 @@ export default function StudentScoresEditor({
                               <input
                                 type="number"
                                 min={0}
-                                max={10}
-                                value={scores.ca3}
+                                max={ca3Max}
+                                value={getScoreInputValue(r.id, 'ca3', scores.ca3)}
                                 onChange={(e) => {
-                                  const val = Math.min(10, Math.max(0, parseInt(e.target.value) || 0));
-                                  handleUpdateScore(r.id, 'ca3', val);
-                                  triggerSaveNotice(`Saved CA3 mark for ${readableName}`);
+                                  handleUpdateScore(r.id, 'ca3', e.target.value);
                                 }}
                                 className="w-24 bg-slate-50 dark:bg-slate-800 py-1.5 px-3 rounded border border-slate-200 dark:border-slate-700 text-center text-xs font-bold font-mono text-slate-800 dark:text-slate-100"
                               />
+                              {scoreError && <p className="mt-1 text-[9px] font-bold text-red-600 dark:text-red-400">{scoreError}</p>}
                             </td>
                             <td className="py-3 px-4 text-right pr-6 font-mono text-[10px] text-emerald-600 font-bold">
                               ✓ Verified Within Scope
@@ -947,7 +1068,7 @@ export default function StudentScoresEditor({
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
                   <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider font-display">Terminal examination record</h4>
-                  <span className="text-[10px] text-blue-600 dark:text-blue-400 font-bold bg-blue-50 dark:bg-blue-950/20 py-1 px-2.5 rounded-full">Max weight: {examMax} marks</span>
+                  <span className="text-[10px] text-blue-600 dark:text-blue-400 font-bold bg-blue-50 dark:bg-blue-950/20 py-1 px-2.5 rounded-full">Max weight: {isReception ? scoreLimits.receptionExamMax : scoreLimits.examMax} marks</span>
                 </div>
 
                 <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden">
@@ -964,6 +1085,7 @@ export default function StudentScoresEditor({
                         const subObj = subjects.find(s => s.id === r.subjectId);
                         const readableName = subObj ? subObj.name : r.subjectId;
                         const scores = unpackScores(r);
+                        const scoreError = scoreErrors[getScoreErrorKey(r.id, 'exam')];
                         return (
                           <tr key={r.id} className="hover:bg-slate-55/10 transition-colors">
                             <td className="py-3 px-4 font-bold text-slate-755 dark:text-slate-250 uppercase">{readableName}</td>
@@ -971,15 +1093,14 @@ export default function StudentScoresEditor({
                               <input
                                 type="number"
                                 min={0}
-                                max={examMax}
-                                value={scores.exam}
+                                max={isReception ? scoreLimits.receptionExamMax : scoreLimits.examMax}
+                                value={getScoreInputValue(r.id, 'exam', scores.exam)}
                                 onChange={(e) => {
-                                  const val = Math.min(examMax, Math.max(0, parseInt(e.target.value) || 0));
-                                  handleUpdateScore(r.id, 'exam', val);
-                                  triggerSaveNotice(`Saved terminal exam score for ${readableName}`);
+                                  handleUpdateScore(r.id, 'exam', e.target.value);
                                 }}
                                 className="w-24 bg-slate-50 dark:bg-slate-800 py-1.5 px-3 rounded border border-slate-200 dark:border-slate-700 text-center text-xs font-bold font-mono text-slate-800 dark:text-slate-100"
                               />
+                              {scoreError && <p className="mt-1 text-[9px] font-bold text-red-600 dark:text-red-400">{scoreError}</p>}
                             </td>
                             <td className="py-3 px-4 text-right pr-6 font-mono text-[10px] text-emerald-600 font-bold">
                               ✓ Verified Within Scope

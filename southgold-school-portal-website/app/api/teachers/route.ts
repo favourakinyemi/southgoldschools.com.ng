@@ -22,8 +22,8 @@ export async function POST(request: Request) {
   try {
     const t = await request.json();
     if (!t.id) t.id = `tch_${Date.now()}`;
-    await repo.Teachers.insert([t]);
-    return NextResponse.json(t, { status: 201 });
+    const [created] = await repo.Teachers.insert([t]);
+    return NextResponse.json(created, { status: 201 });
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 });
   }

@@ -3,6 +3,8 @@ import { ensureAppUserExists, onboardStudent } from './auth';
 import fs from 'fs';
 import path from 'path';
 import { HOMEPAGE_IMAGE_DEFAULTS } from '../data/cmsDefaults';
+import { isReceptionClass } from '../data/preschoolSkills';
+import { assertValidResultScores, buildResultScoreLimits } from '../lib/resultScoreValidation';
 
 // ============================================================================
 // Row <-> Frontend shape mappers
@@ -762,14 +764,18 @@ export const Teachers = {
     await replaceAll('teachers', resolved, 'id');
   },
   insert: async (rows: any[]) => {
-    await Promise.all(
+    return await Promise.all(
       rows.map(async (t) => {
-        await ensureAppUserExists({
+        const auth = await ensureAppUserExists({
           email: t.email,
           role: 'TEACHER',
           fullName: `${t.firstName} ${t.lastName || ''}`.trim(),
           teacherData: t,
         });
+        const { data, error } = await supabase.from('teachers').select('*').eq('user_id', auth.id).maybeSingle();
+        if (error) throw error;
+        if (!data) throw new Error('Teacher profile was not created.');
+        return mapTeacherFromDb(data);
       })
     );
   },
@@ -801,19 +807,32 @@ export const Teachers = {
   },
 };
 
+const getConfiguredResultScoreLimits = async () => {
+  const config = await Config.get();
+  return buildResultScoreLimits(config);
+};
+
+const validateRowsForResultPersistence = async (rows: any[]) => {
+  const limits = await getConfiguredResultScoreLimits();
+  assertValidResultScores(rows, limits, isReceptionClass);
+};
+
 export const Results = {
   list: async () => {
     return (await supabase.from('results').select('*')).data?.map(mapResultFromDb) ?? [];
   },
   insert: async (rows: any[]) => {
+    await validateRowsForResultPersistence(rows);
     const { error } = await supabase.from('results').insert(rows.map(mapResultToDb));
     if (error) throw error;
   },
   update: async (id: string, row: any) => {
+    await validateRowsForResultPersistence([{ ...row, id }]);
     const { error } = await supabase.from('results').update(mapResultToDb(row)).eq('id', id);
     if (error) throw error;
   },
   upsert: async (rows: any[]) => {
+    await validateRowsForResultPersistence(rows);
     const { error } = await supabase.from('results').upsert(rows.map(mapResultToDb), { onConflict: 'id' });
     if (error) throw error;
   },
@@ -1245,13 +1264,10 @@ export const StaffAdmins = {
           fullName: s.fullName,
           teacherData: { department: s.department },
         });
-        return {
-          userId: auth.id,
-          email: s.email,
-          fullName: s.fullName,
-          department: s.department,
-          permissions: {},
-        };
+        const { data, error } = await supabase.from('staff_admins').select('*').eq('user_id', auth.id).maybeSingle();
+        if (error) throw error;
+        if (!data) throw new Error('Staff admin profile was not created.');
+        return mapStaffAdminFromDb(data);
       })
     );
   },
